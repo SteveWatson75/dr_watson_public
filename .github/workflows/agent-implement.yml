@@ -1,0 +1,54 @@
+name: Agent implementation
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  # These apply only to the built-in GITHUB_TOKEN. The workflow overrides
+  # GITHUB_TOKEN with a repo-scoped PAT that has read+write access.
+  contents: read
+
+concurrency:
+  group: agent-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  implement:
+    if: github.event.label.name == 'agent:implement' && github.event.sender.login == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.OPENCODE_GH_TOKEN }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/start-dr-watson
+        with:
+          opencode_api_key: ${{ secrets.OPENCODE_API_KEY }}
+
+      - name: Implement the approved issue
+        uses: anomalyco/opencode/github@e3c4eb242585dcd77be1a867391b7c25fd47ce52 # v1.19.3
+        env:
+          GITHUB_TOKEN: ${{ secrets.OPENCODE_GH_TOKEN }}
+          OPENCODE_CONFIG_CONTENT: >-
+            {"provider":{"dr-watson":{"npm":"@ai-sdk/openai-compatible","name":"Dr Watson","options":{"baseURL":"http://127.0.0.1:8787/v1"},"models":{"dr-watson-auto":{"name":"Dr Watson Auto","compatibility":{"reasoningField":"reasoning_content"}}}}}}
+          GIT_AUTHOR_NAME: Dr Watson
+          GIT_AUTHOR_EMAIL: dr-watson@users.noreply.github.com
+          GIT_COMMITTER_NAME: Dr Watson
+          GIT_COMMITTER_EMAIL: dr-watson@users.noreply.github.com
+        with:
+          model: dr-watson/dr-watson-auto
+          use_github_token: true
+          prompt: |
+            Implement the issue that triggered this workflow as one small, complete vertical slice.
+            Read the repository instructions and issue acceptance criteria first. If the issue is
+            ambiguous, too broad for one focused change, or blocked by unanswered questions, ask
+            for clarification in an issue comment and stop without editing code.
+
+            Otherwise, follow existing patterns, add or update tests, and run `npm run typecheck`
+            and `npm test`. Do not merge, change secrets, or modify GitHub Actions/security
+            configuration. Open a draft pull request that references the issue with `Closes #N`,
+            summarizes the change and checks, and gives the human a concise manual-QA checklist.

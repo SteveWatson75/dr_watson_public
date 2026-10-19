@@ -1,0 +1,38 @@
+name: Start Dr Watson router
+description: Start the local, zero-paid-budget Dr Watson API for OpenCode.
+inputs:
+  opencode_api_key:
+    description: Existing OpenCode Go API key, used only by the local router process.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+
+    - name: Install dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Start zero-paid-budget API
+      shell: bash
+      env:
+        OPENCODE_API_KEY: ${{ inputs.opencode_api_key }}
+        LLM_PROVIDER: auto
+        LLM_MONTHLY_SOFT_LIMIT_USD: "0"
+        LLM_MONTHLY_HARD_LIMIT_USD: "0"
+      run: |
+        npm run serve > "$RUNNER_TEMP/dr-watson.log" 2>&1 &
+        echo "$!" > "$RUNNER_TEMP/dr-watson.pid"
+
+        for attempt in {1..30}; do
+          if curl --fail --silent http://127.0.0.1:8787/v1/models >/dev/null; then
+            exit 0
+          fi
+          sleep 1
+        done
+
+        cat "$RUNNER_TEMP/dr-watson.log"
+        exit 1

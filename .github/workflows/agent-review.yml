@@ -1,0 +1,84 @@
+name: Agent review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  # These apply only to the built-in GITHUB_TOKEN. The workflow overrides
+  # GITHUB_TOKEN with a repo-scoped PAT that has read+write access.
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: agent-review-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      !github.event.pull_request.draft &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DR_WATSON_MODE: github-action
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.OPENCODE_GH_TOKEN }}
+          persist-credentials: true
+
+      - uses: ./.github/actions/start-dr-watson
+        with:
+          opencode_api_key: ${{ secrets.OPENCODE_API_KEY }}
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          git fetch --depth=1 origin "${{ github.event.pull_request.base.ref }}"
+          FILES=$(git diff --name-only FETCH_HEAD..HEAD | tr '\n' ' ')
+          echo "files=${FILES}" >> $GITHUB_OUTPUT
+
+      - name: Review the pull request
+        id: review
+        uses: anomalyco/opencode/github@e3c4eb242585dcd77be1a867391b7c25fd47ce52 # v1.19.3
+        timeout-minutes: 10
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.OPENCODE_GH_TOKEN }}
+          OPENCODE_CONFIG_CONTENT: >-
+            {"provider":{"dr-watson":{"npm":"@ai-sdk/openai-compatible","name":"Dr Watson","options":{"baseURL":"http://127.0.0.1:8787/v1"},"models":{"dr-watson-auto":{"name":"Dr Watson Auto","compatibility":{"reasoningField":"reasoning_content"}}}}}}
+          GIT_AUTHOR_NAME: Dr Watson
+          GIT_AUTHOR_EMAIL: dr-watson@users.noreply.github.com
+          GIT_COMMITTER_NAME: Dr Watson
+          GIT_COMMITTER_EMAIL: dr-watson@users.noreply.github.com
+        with:
+          model: dr-watson/dr-watson-auto
+          use_github_token: true
+          prompt: |
+            Review the changes in this pull request. You must complete this review in a single
+            pass: read ONLY the PR description, the linked issue, and only the following changed
+            files: ${{ steps.changed-files.outputs.files }}
+            Do not open, read, or search any file not in that list. Do not fetch additional
+            files, commits, comments, or unrelated repository context. Do not run any searches,
+            do not open files outside the PR diff, and do not make further tool calls after
+            reading those sources. Stop researching immediately and write the review.
+
+            Look for concrete correctness bugs, regressions, security issues, and missing
+            acceptance criteria. Do not edit files, approve, or merge. Report only actionable
+            findings with file/line references; if there are none, say so and identify any manual
+            QA that remains for the human reviewer.
+
+            End the review with a clear decision on its own line: either **Approved** or
+            **Has blocking changes needed**. If you list blocking findings, explain why each one
+            blocks approval.
+
+      - name: Record review cancellation
+        if: steps.review.outcome == 'cancelled' || steps.review.outcome == 'failure'
+        run: |
+          echo "Review step cancelled or failed (timeout or error). No review comment posted." >> "$GITHUB_STEP_SUMMARY"
+          echo "Review did not complete within the 10-minute timeout." >&2

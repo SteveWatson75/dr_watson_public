@@ -1,0 +1,30 @@
+name: Feature or improvement
+description: Capture a small, testable slice of work
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / desired outcome
+      description: Who needs what, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable outcomes that can be checked in one focused implementation.
+      placeholder: |
+        - [ ] Given ..., when ..., then ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: qa
+    attributes:
+      label: Manual QA notes
+      description: Any behavior that automated tests cannot verify?
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blocked by / related issues
+      description: Link prerequisites. Do not label this ready for the agent until they are resolved.

@@ -1,0 +1,25 @@
+{
+  "name": "dr_watson_public",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "serve": "tsx src/serve.ts",
+    "check-models": "tsx src/check-models.ts",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@openai/agents": "latest",
+    "dotenv": "latest",
+    "zod": "latest",
+    "openai": "^7.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
