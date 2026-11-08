@@ -1,5 +1,10 @@
 # Repository-summary checkpoints (2026-11-08)
 
+> Update: the shipping configuration now advertises 262,144 context tokens (the
+> smallest OpenCode Go free route) with `compaction.buffer: "3.125%"`, reserving
+> 8,192 tokens and compacting at 253,952. The 32k/25% figures below describe the
+> original reproduction.
+
 ## Finding and scope
 
 The reproduced checkpoint is **OpenCode compaction output**, not text prepended

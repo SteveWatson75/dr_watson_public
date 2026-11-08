@@ -15,13 +15,13 @@
             "input": ["text"],
             "output": ["text"]
           },
-          "limit": { "context": 32768, "output": 8192 }
+          "limit": { "context": 262144, "output": 8192 }
         }
       }
     }
   },
   "model": "dr-watson/dr-watson-auto",
-  "compaction": { "buffer": "25%" },
+  "compaction": { "buffer": "3.125%" },
   "agents": {
     "compaction": {
       "hidden": true,
