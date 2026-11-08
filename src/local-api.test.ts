@@ -3,7 +3,7 @@ import { request as httpRequest, type Server } from "node:http";
 import type OpenAI from "openai";
 import { BudgetLedger } from "./budget.js";
 import { config } from "./config.js";
-import { conversationTier, createLocalApi, isGithubActionMode, isOpenCodeStateSummary, prepareOpenCodeMessages, routedCompletion, LOCAL_MODEL, type CompletionTransport } from "./local-api.js";
+import { conversationTier, createLocalApi, isGithubActionMode, isOpenCodeCompactionRequest, isOpenCodeStateSummary, prepareOpenCodeMessages, routedCompletion, LOCAL_MODEL, type CompletionTransport } from "./local-api.js";
 
 let ledger: BudgetLedger;
 let server: Server;
@@ -77,6 +77,53 @@ describe("loopback OpenCode API", () => {
     const prepared = prepareOpenCodeMessages([{ role: "assistant", content: summary }]);
     expect(prepared.some((item) => item.role === "user" && String(item.content).includes("Implement issue #111"))).toBe(true);
     expect(conversationTier([{ role: "assistant", content: summary }])).toBe("standard");
+  });
+  // OpenCode 2.2.6's initial compaction uses this opening and checkpoint headings.
+  // Later compactions use the already-supported "Update the existing checkpoint".
+  const initialCompaction = "You MUST summarize the conversation above into a structured summary that will be given to another agent to resume the work.\n\n## Objective\n## Requirements\n## Decisions\n## Work State\n## Next Move";
+  it.each([
+    initialCompaction,
+    "Update the existing checkpoint in the conversation above into one consolidated summary.",
+    "Write a compaction summary.",
+    "Summarize the conversation into a checkpoint.",
+  ])("preserves internal compaction instructions before a route is remembered (%s)", async (instruction) => {
+    const messages = [
+      { role: "system" as const, content: "Do not continue the task or call tools. Return only the structured summary." },
+      { role: "user" as const, content: "Summarise this repository." },
+      { role: "assistant" as const, content: "Read the README.", reasoning_content: "The README describes routing." },
+      { role: "user" as const, content: instruction },
+    ];
+    expect(isOpenCodeCompactionRequest(messages)).toBe(true);
+    expect(prepareOpenCodeMessages(messages)).toEqual(messages);
+    const checkpoint = "## Objective\nSummarise the repository\n## Requirements\nRead only\n## Work State\nComplete\n## Next Move\nNone";
+    transport.mockResolvedValue({ ...reply, choices: [{ ...reply.choices[0]!, message: { ...reply.choices[0]!.message, content: checkpoint } }] });
+    const response = await post({ model: LOCAL_MODEL, messages });
+    expect(response.status).toBe(200);
+    expect((await response.json()).choices[0].message.content).toBe(checkpoint);
+    expect(transport.mock.calls[0]![1].messages).toEqual(messages);
+  });
+  it.each([false, true])("keeps repository summaries separate from compaction and reasoning (stream=%s)", async (stream) => {
+    const messages = [{ role: "user" as const, content: "Summarise this repository in two sentences." }];
+    expect(isOpenCodeCompactionRequest(messages)).toBe(false);
+    const content = "Dr Watson is a local-first TypeScript assistant. It offers memory, model routing and budget controls.";
+    const reasoning_content = "Internal reasoning stays separate from the answer.";
+    transport.mockResolvedValue({ ...reply, choices: [{ ...reply.choices[0]!, message: {
+      ...reply.choices[0]!.message, content, reasoning_content,
+    } as OpenAI.ChatCompletionMessage }] });
+    const response = await post({ model: LOCAL_MODEL, messages, stream });
+    const result = stream ? (await sseEvents(response))[0].choices[0].delta : (await response.json()).choices[0].message;
+    expect(result.content).toBe(content);
+    expect(result.reasoning_content).toBe(reasoning_content);
+    expect(JSON.stringify(transport.mock.calls[0]![1].messages)).not.toContain("## Objective");
+  });
+  it("classifies the latest user request, not quoted or historical compaction instructions", () => {
+    expect(isOpenCodeCompactionRequest([
+      { role: "user", content: `Explain this instruction: ${initialCompaction}` },
+    ])).toBe(false);
+    expect(isOpenCodeCompactionRequest([
+      { role: "user", content: initialCompaction },
+      { role: "user", content: "Summarise this repository." },
+    ])).toBe(false);
   });
   it("detects the bounded GitHub Actions mode from a header or environment", () => {
     expect(isGithubActionMode({ "x-dr-watson-mode": "github-action" }, undefined)).toBe(true);

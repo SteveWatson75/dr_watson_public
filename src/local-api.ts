@@ -80,6 +80,10 @@ export function isOpenCodeStateSummary(text: string): boolean {
 export function isOpenCodeCompactionRequest(messages: CompletionInput["messages"]): boolean {
   const lastUser = [...messages].reverse().find((item) => item.role === "user");
   const text = lastUser ? messageText(lastUser) : "";
+  // V2's first checkpoint has a different instruction from subsequent updates.
+  // Without this check its headings are mistaken for an existing state summary
+  // and prepareOpenCodeMessages removes the actual compaction request.
+  if (text.startsWith("You MUST summarize the conversation above into a structured summary that will be given to another agent to resume the work.")) return true;
   return /(?:consolidated summary|update the existing checkpoint|compaction summary|summarize the conversation into)/i.test(text);
 }
 
