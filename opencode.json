@@ -10,7 +10,11 @@
           "name": "Dr Watson Auto",
           "reasoning": true,
           "interleaved": "reasoning_content",
-          "capabilities": { "tools": true, "input": ["text"], "output": ["text"] },
+          "capabilities": {
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"]
+          },
           "limit": { "context": 32768, "output": 8192 }
         }
       }
@@ -20,6 +24,7 @@
   "compaction": { "buffer": "25%" },
   "agents": {
     "compaction": {
+      "hidden": true,
       "system": "Write only a compact checkpoint of at most 220 words. Use short bullets under these headings when relevant: Objective, Requirements, Decisions, Completed, Active, Blockers, Next move, Relevant files. Preserve user constraints, exact paths and identifiers, unresolved failures, and pending commands. Include only information needed to resume the task. Do not retell the conversation, repeat tool output, narrate reasoning, list routine inspection steps, or duplicate completed work. Omit empty headings and give one concrete next action."
     },
     "title": { "model": "opencode-go/mimo-v2.6-flash" },

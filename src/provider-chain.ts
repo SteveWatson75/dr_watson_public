@@ -7,16 +7,18 @@ const OPENROUTER_FREE = { provider: "openrouter", model: "openrouter/free" } sat
 // OpenCode Go's free models ("Free" in the model id) have no monthly limit and
 // stay available after the paid Go models exhaust their rolling 5-hour/weekly
 // limits. They are the zero-cost fallback while the subscription allowance
-// recovers, so they sit ahead of the external free/paid routes. Coding-heavy
-// tiers lean on Beam; LongCat's cheaper, longer-context profile leads the cheap
-// tier.
+// recovers, so they sit ahead of the external free/paid routes. Cheap tier
+// leads with Crouton; standard/hard tiers lead with Beam; Iceman is the final
+// zero-cost fallback.
 const GO_FREE_STANDARD = [
   { provider: "opencode", model: "beam-free" },
-  { provider: "opencode", model: "longcat-2.5-preview-free" },
+  { provider: "opencode", model: "crouton-alpha-free" },
+  { provider: "opencode", model: "iceman-contributor-free" },
 ] satisfies ModelRoute[];
 const GO_FREE_CHEAP = [
-  { provider: "opencode", model: "longcat-2.5-preview-free" },
+  { provider: "opencode", model: "crouton-alpha-free" },
   { provider: "opencode", model: "beam-free" },
+  { provider: "opencode", model: "iceman-contributor-free" },
 ] satisfies ModelRoute[];
 
 export const TIER_ROUTES: Record<TaskTier, ModelRoute[]> = {
