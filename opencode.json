@@ -27,7 +27,7 @@
       "hidden": true,
       "system": "Write only a compact checkpoint of at most 220 words. Use short bullets under these headings when relevant: Objective, Requirements, Decisions, Completed, Active, Blockers, Next move, Relevant files. Preserve user constraints, exact paths and identifiers, unresolved failures, and pending commands. Include only information needed to resume the task. Do not retell the conversation, repeat tool output, narrate reasoning, list routine inspection steps, or duplicate completed work. Omit empty headings and give one concrete next action."
     },
-    "title": { "model": "opencode-go/mimo-v2.6-flash-free" },
-    "summary": { "model": "opencode-go/mimo-v2.6-flash-free" }
+    "title": { "model": "opencode-go/mimo-v2.6-flash" },
+    "summary": { "model": "opencode-go/mimo-v2.6-flash" }
   }
 }
