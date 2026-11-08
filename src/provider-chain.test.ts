@@ -27,7 +27,8 @@ describe("task routing", () => {
       { provider: "opencode", model: "mimo-v2.6-pro" },
       { provider: "opencode", model: "kimi-k2.7-code" },
       { provider: "opencode", model: "beam-free" },
-      { provider: "opencode", model: "longcat-2.5-preview-free" },
+      { provider: "opencode", model: "crouton-alpha-free" },
+      { provider: "opencode", model: "iceman-contributor-free" },
       { provider: "openrouter", model: "openrouter/free" },
       { provider: "gemini", model: "gemini-3.8-flash" },
       { provider: "anthropic", model: "claude-sonnet-5-5" },
@@ -47,15 +48,16 @@ describe("task routing", () => {
       // The free Go routes appear after the paid Go routes and before any
       // non-Go provider, so a capped account keeps working inside the plan.
       expect(models).toContain("beam-free");
-      expect(models).toContain("longcat-2.5-preview-free");
+      expect(models).toContain("crouton-alpha-free");
+      expect(models).toContain("iceman-contributor-free");
       const firstExternal = routes.findIndex((route) => route.provider !== "opencode");
       expect(firstExternal).toBeGreaterThan(-1);
       const goModels = routes.slice(0, firstExternal).map((route) => route.model);
       expect(goModels.at(-1)).toMatch(/-free$/);
       expect(goModels.at(-2)).toMatch(/-free$/);
     }
-    // The cheapest tier leads with LongCat, the stronger tiers with Beam.
-    expect(modelRoutes("cheap", "auto")[3]).toEqual({ provider: "opencode", model: "longcat-2.5-preview-free" });
+    // Cheap tier leads with Crouton, stronger tiers with Beam.
+    expect(modelRoutes("cheap", "auto")[3]).toEqual({ provider: "opencode", model: "crouton-alpha-free" });
     expect(modelRoutes("hard", "auto")[3]).toEqual({ provider: "opencode", model: "beam-free" });
   });
 

@@ -60,7 +60,7 @@ issues before labeling individual slices. Keep one issue small enough for a fres
 - OpenCode Go usage is included in the existing subscription. In the OpenCode Console, keep **Use
   balance** off so hitting the Go allowance blocks the run instead of falling back to paid balance.
 - When the paid Go models reach their rolling 5-hour or weekly allowance, OpenCode Go falls back to
-  its free models (`beam-free`, then `longcat-2.5-preview-free`). They carry no monthly limit and
+  its free models (`beam-free`, then `crouton-alpha-free`, then `iceman-contributor-free`; cheap tier leads with `crouton-alpha-free`). They carry no monthly limit and
   keep a run progressing at $0 while the subscription allowance recovers.
 - Agent PRs are drafts; CI, fresh-context review, QA, and merge approval remain separate gates.
 - The review workflow only checks same-repository PRs opened by the repository owner; fork PRs are

@@ -30,7 +30,8 @@ describe("monthly budget", () => {
     expect(estimatedCost("opencode", "mimo-v2.6-pro", 1_000_000, 1_000_000)).toBe(0);
     expect(estimatedCost("opencode", "step-5-preview", 1_000_000, 1_000_000)).toBe(0);
     expect(estimatedCost("opencode", "beam-free", 1_000_000, 1_000_000)).toBe(0);
-    expect(estimatedCost("opencode", "longcat-2.5-preview-free", 1_000_000, 1_000_000)).toBe(0);
+    expect(estimatedCost("opencode", "crouton-alpha-free", 1_000_000, 1_000_000)).toBe(0);
+    expect(estimatedCost("opencode", "iceman-contributor-free", 1_000_000, 1_000_000)).toBe(0);
     expect(estimatedCost("anthropic", "claude-sonnet-5-5", 1_000_000, 1_000_000)).toBe(12);
     expect(estimatedCost("anthropic", "claude-haiku-5-5", 100_000, 1000)).toBeCloseTo(0.0105);
     expect(estimatedCost("anthropic", "claude-haiku-5-5", 100_001, 1000)).toBeCloseTo(0.0525005);
