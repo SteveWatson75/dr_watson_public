@@ -5,8 +5,16 @@
 The reproduced checkpoint is **OpenCode compaction output**, not text prepended
 by Dr Watson's response serializer or by the model's ordinary repository answer.
 OpenCode stores it as `type: "compaction"`, separately from `type: "assistant"`.
-Displaying those records in a transcript is an OpenCode client concern. This
-patch does **not** claim to hide them or fix the client's presentation.
+However, stopping at that distinction did not explain the Dr Watson-specific
+experience: its project configuration advertises a 32k context window, while
+OpenCode's default buffer reserves at least 16k. Ordinary repository inspection
+therefore triggers premature compaction and can enter a re-read/compact loop.
+
+The experience correction is an explicit `compaction.buffer: "25%"`: reserve
+8,192 tokens, matching the advertised output budget, rather than half the window.
+The same fresh seven-file summary now completes with **zero checkpoints**.
+The percentage scales with other selected models; context limits are not inflated
+to assume that all upstream and fallback routes support a larger window.
 
 An independently verified compatibility defect is corrected: OpenCode 2.2.6's
 **initial** compaction instruction was not recognised. Without a remembered
@@ -14,7 +22,7 @@ route, message preparation mistakes its template headings for an old checkpoint,
 removes the instruction, and injects a normal task anchor instead. Recognising
 the exact initial instruction preserves it, just like subsequent checkpoint
 updates. No output filtering, routing-table changes, or compaction disabling is
-appropriate based on the evidence.
+introduced.
 
 ## Comparison
 
@@ -67,8 +75,38 @@ Representative upstream response shapes (content redacted):
 
 Compaction prompt usage was about 25k tokens. The advertised small context window
 and OpenCode's automatic compaction budget explain why ordinary reconnaissance
-can trigger compaction; changing the advertised limits or budget was not needed
-to establish the origin and was not attempted.
+can trigger compaction. In service 2.2.6, the default threshold is 32,768 minus
+the 16,384-token buffer; explicit `"25%"` raises it from 16,384 to 24,576.
+OpenCode uses its own context estimates/previous usage to decide when to compact,
+not the next upstream response's eventual prompt-token count.
+
+### Corrected experience and comparison
+
+Using the same background service as the desktop app, a fresh `build` session,
+the same seven-file request, read-only permissions and the same successful
+`opencode:beam-free` route:
+
+| Configuration | Automatic checkpoints before first summary | Answer chars | Checkpoint headings in answer |
+| --- | ---: | ---: | --- |
+| Original default buffer | 5 | 1,775 | no |
+| Explicit 8,192-token buffer (initial trial) | 0 | 2,245 | no |
+| Final `"25%"` buffer | 0 | 2,182 | no |
+| Direct `opencode-go/beam-free` | 0 | 2,283 | no |
+
+The direct Beam catalogue entry advertises 1,048,576 context tokens, explaining
+why the same inspection does not cross its compaction threshold. There is no
+need to change Dr Watson's conservative routed-model limit to match it.
+
+The final corrected Dr Watson session then received a second request for a
+one-sentence summary without tools. Its grown history triggered **one completed
+automatic compaction**, then a clean 289-character answer with no tool re-reads.
+This proves automatic compaction still operates beyond the new threshold; the
+fix does not suppress checkpoints when compaction is actually needed.
+
+These are live service/API transcript checks, not a visual desktop screenshot
+test. No desktop renderer was changed. Apply the buffer in the project config
+the desktop session actually loads; another checkout or a copied provider config
+does not inherit this PR's setting automatically.
 
 The upstream message has separate `content`, `reasoning_content` and, for tool
 steps, `tool_calls` fields. `publicCompletion` copies these separately;
@@ -80,8 +118,10 @@ before a clean summary, with no checkpoint headings in assistant text.
 ## Validation and remaining boundary
 
 - Before the fix, the new initial-compaction detection regression fails.
-- After the fix, all 150 tests in 17 files, `npm run typecheck`, and
-  `git diff --check` pass.
+- Configuration regressions require the explicit proportional buffer, unchanged
+  advertised context/output limits, automatic compaction and retained history.
+- The buffer regression fails against the previous configuration. With both
+  corrections, all 152 tests in 18 files, typecheck and diff check pass.
 - Tests cover initial and legacy/update requests with no remembered route,
   unchanged internal instructions and checkpoint responses, ordinary repository
   summaries over JSON and SSE, separate reasoning, and latest-request selection.
@@ -89,9 +129,9 @@ before a clean summary, with no checkpoint headings in assistant text.
 - Live patched API with no remembered route preserves the full 2,723-character
   initial compaction instruction, tool calls/results and reasoning; OpenCode
   completes manual compaction via Beam (727-character checkpoint).
-- Checkpoint visibility in OpenCode remains reproducible/expected after this
-  compatibility fix. Suppressing it requires a client-side presentation change,
-  not deletion of legitimate provider content in these repositories.
+- The fresh seven-file repository summary no longer triggers the reproduced
+  checkpoint loop. Legitimate long-session compaction records can still be displayed by
+  OpenCode; globally hiding those is separate from this experience correction.
 
 References: [OpenCode compaction](https://opencode.ai/docs/compaction),
 [session API](https://opencode.ai/docs/api), and
