@@ -91,13 +91,13 @@ This repository includes an OpenCode V2 `opencode.json`. For another repository,
           "reasoning": true,
           "interleaved": "reasoning_content",
           "capabilities": { "tools": true, "input": ["text"], "output": ["text"] },
-          "limit": { "context": 32768, "output": 8192 }
+          "limit": { "context": 262144, "output": 8192 }
         }
       }
     }
   },
   "model": "dr-watson/dr-watson-auto",
-  "compaction": { "buffer": "25%" },
+  "compaction": { "buffer": "3.125%" },
   "agents": {
     "compaction": {
       "hidden": true,
@@ -111,9 +111,9 @@ This repository includes an OpenCode V2 `opencode.json`. For another repository,
 
 The main build agent goes through `dr-watson-auto`; the hidden `title` and `summary` agents can go directly to a cheap OpenCode Go model. V2 compaction still uses the session's selected model, but the project-level `agents.compaction.system` instruction asks for a concise checkpoint rather than transcript-style narration. The compaction model therefore continues through Dr Watson's router. This setup requires OpenCode Go to be connected in OpenCode (`/connect`) in addition to `OPENCODE_API_KEY` being present in Dr Watson's `.env` for Dr Watson's own Go routes.
 
-Then run `opencode` in that repository. The advertised context limit is a conservative client setting; a local fallback model may have a smaller configured context window.
+Then run `opencode` in that repository. The advertised context limit matches the smallest OpenCode Go free route (262,144 tokens); a local fallback model may have a smaller configured context window, so requests can still compact earlier when such a route is selected.
 
-Keep the explicit compaction buffer in the project configuration used by the desktop app too. OpenCode's default buffer reserves at least 16k tokens, half of Dr Watson's advertised 32k window, which can trigger repeated checkpoints during an ordinary repository summary. `"25%"` reserves 8,192 tokens (the advertised output budget) instead, while scaling with other selected models. Automatic and manual compaction remain enabled; genuinely long histories can still produce checkpoints.
+Keep the explicit compaction buffer in the project configuration used by the desktop app too. OpenCode's default buffer reserves at least 16k tokens; the explicit percentage keeps the reserved budget tied to the advertised output budget instead, and scales with other selected models. `"3.125%"` reserves 8,192 tokens (the advertised output budget), so compaction starts at 253,952 tokens. Automatic and manual compaction remain enabled; genuinely long histories can still produce checkpoints.
 
 For the route verified with OpenCode v2.0.30, keep `OPENROUTER_API_KEY` in Dr Watson's `.env` and start the API with:
 

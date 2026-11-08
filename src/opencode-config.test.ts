@@ -5,17 +5,18 @@ const project = JSON.parse(readFileSync(new URL("../opencode.json", import.meta.
 const compaction = project.compaction ?? {};
 
 describe("OpenCode routed-model context budget", () => {
-  it("reserves an output budget, not half the small context window, before compaction", () => {
+  it("advertises the smallest Go free window and reserves only the output budget before compaction", () => {
     const { context, output } = project.providers["dr-watson"].models["dr-watson-auto"].limit;
-    // Do not fix premature compaction by claiming every fallback has a larger window.
-    expect(context).toBe(32768);
+    // Match the smallest OpenCode Go free route (iceman-contributor-free) rather
+    // than inflating the window beyond what every route can serve.
+    expect(context).toBe(262144);
     expect(output).toBe(8192);
     // An explicit percentage bypasses OpenCode's default 16k buffer floor and
     // still scales safely when another provider/model is selected in this project.
-    expect(compaction.buffer).toBe("25%");
+    expect(compaction.buffer).toBe("3.125%");
     const reserved = Math.round(context * Number.parseFloat(compaction.buffer) / 100);
     expect(reserved).toBe(output);
-    expect(context - reserved).toBe(24576);
+    expect(context - reserved).toBe(253952);
   });
 
   it("keeps automatic compaction and recent-context retention enabled", () => {
