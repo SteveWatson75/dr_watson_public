@@ -18,15 +18,32 @@ async function run() {
   } });
   if (values.report) {
     if (values.run || values.discover) throw new Error("--report is offline only");
-    const saved = JSON.parse(readFileSync(values.report, "utf8"));
+    const reports = values.report.split(",").map((path) => JSON.parse(readFileSync(path, "utf8")));
+    const saved = reports[0];
+    if (!saved) throw new Error("Missing evaluation report");
+    const requestSettings = (report: typeof saved) => JSON.stringify([
+      report.endpoint, report.system, report.settings?.maxTokens,
+      report.settings?.timeoutMs, report.settings?.retries,
+    ]);
+    const combinedResults: EvaluationResult[] = [];
+    const combinedModels: string[] = [];
+    for (const report of reports) {
+      if (report.version !== 1 || report.tier !== saved.tier || report.repetitions !== saved.repetitions
+        || report.fixtureHash !== saved.fixtureHash || requestSettings(report) !== requestSettings(saved)
+        || !Array.isArray(report.results) || !Array.isArray(report.plan)) throw new Error("Incompatible evaluation reports");
+      combinedResults.push(...report.results.map((r: unknown) => resultSchema.parse(r)));
+      for (const entry of report.plan) {
+        if (!entry || typeof entry.model !== "string" || combinedModels.includes(entry.model)) throw new Error("Malformed or duplicate candidate plan");
+        combinedModels.push(entry.model);
+      }
+    }
     if (saved.version !== 1 || !["cheap", "standard", "hard"].includes(saved.tier)
-      || ![2, 3].includes(saved.repetitions) || !Array.isArray(saved.results) || !Array.isArray(saved.plan)) throw new Error("Malformed evaluation report");
+      || ![2, 3].includes(saved.repetitions)) throw new Error("Malformed evaluation report");
     const fixtures = evaluationFixtures.filter((f) => f.tier === saved.tier);
     if (saved.fixtureHash !== createHash("sha256").update(JSON.stringify(fixtures)).digest("hex")) throw new Error("Fixture version mismatch; use the original revision");
-    const results = saved.results.map((r: unknown) => resultSchema.parse(r));
-    const candidates = candidateCatalogue.candidates.filter((c) => saved.plan.some((p: { model?: string }) => p.model === c.id));
-    if (!candidates.length || candidates.length !== saved.plan.length) throw new Error("Malformed candidate plan");
-    console.log(JSON.stringify({ tier: saved.tier, status: "provisional; human review required; no routing changes", comparison: rankCandidates(candidates.map((c) => summarize(c, fixtures, results, saved.repetitions))) }, null, 2));
+    const candidates = candidateCatalogue.candidates.filter((c) => combinedModels.includes(c.id));
+    if (!candidates.length || candidates.length !== combinedModels.length) throw new Error("Malformed candidate plan");
+    console.log(JSON.stringify({ tier: saved.tier, status: "provisional; human review required; no routing changes", comparison: rankCandidates(candidates.map((c) => summarize(c, fixtures, combinedResults, saved.repetitions))) }, null, 2));
     return;
   }
   if (values.discover) {

@@ -14,6 +14,7 @@ export const candidateCatalogueSchema = z.object({
     training: z.enum(["not-used", "yes", "unknown"]),
     retentionDays: z.number().int().nonnegative().nullable(),
     restrictions: z.string().min(1), blocked: z.boolean().optional(),
+    privacyValidThrough: z.iso.date().optional(),
     input: z.number().finite().nonnegative(), output: z.number().finite().nonnegative(),
   }).strict()).min(1),
 }).strict().refine((c) => new Set(c.candidates.map((m) => m.id)).size === c.candidates.length, "duplicate candidate");
@@ -34,6 +35,7 @@ export function eligibility(candidate: Candidate, models: GoModel[], now = new D
   const reasons: string[] = [];
   const age = now.getTime() - Date.parse(candidateCatalogue.checkedAt);
   if (age < 0 || age > 30 * 86400_000) reasons.push("privacy evidence needs refresh");
+  if (candidate.privacyValidThrough && now.toISOString().slice(0, 10) > candidate.privacyValidThrough) reasons.push("privacy agreement expired");
   if (candidate.training !== "not-used") reasons.push("training prohibited or unknown");
   if (candidate.retentionDays === null) reasons.push("unknown retention");
   if (candidate.blocked) reasons.push(candidate.restrictions);

@@ -34,12 +34,27 @@ describe("evaluation eligibility and catalogues", () => {
     expect(eligibility({ ...candidate, blocked: true }, models, now)).toContain(candidate.restrictions);
     expect(eligibility(candidate, models, new Date("2027-01-01"))).toContain("privacy evidence needs refresh");
   });
+  it("honors owner-approved Global access for DeepSeek without extending its ZDR agreement", () => {
+    for (const id of ["deepseek-v4.1-flash", "deepseek-v4-pro"]) {
+      const c = candidateCatalogue.candidates.find((c) => c.id === id)!;
+      const available = [{ ...models[0]!, id }];
+      expect(eligibility(c, available, now)).toEqual([]);
+      expect(eligibility(c, available, new Date("2026-11-30T23:59:59Z"))).toEqual([]);
+      expect(eligibility(c, available, new Date("2026-12-01T00:00:00Z"))).toContain("privacy agreement expired");
+      expect(eligibility(c, [], now)).toContain("absent from current Go catalogue");
+    }
+    const beam = candidateCatalogue.candidates.find((c) => c.id === "beam-free")!;
+    expect(beam.retentionDays).toBe(30);
+    expect(beam.training).toBe("not-used");
+    expect(beam.restrictions).toContain("Global settings do not waive model-specific exclusions");
+  });
   it("rejects malformed, duplicate, unversioned or negative-price candidate catalogues", () => {
     for (const bad of [
       { ...candidateCatalogue, version: 2 },
       { ...candidateCatalogue, candidates: [candidate, candidate] },
       { ...candidateCatalogue, candidates: [{ ...candidate, output: -1 }] },
       { ...candidateCatalogue, candidates: [{ ...candidate, training: undefined }] },
+      { ...candidateCatalogue, candidates: [{ ...candidate, privacyValidThrough: "not-a-date" }] },
     ]) expect(candidateCatalogueSchema.safeParse(bad).success).toBe(false);
   });
   it("rejects malformed or duplicate discovery instead of normalizing invalid identities", () => {

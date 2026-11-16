@@ -1,21 +1,238 @@
 {
   "version": 1,
-  "scorerSha256": "580679d6f0e0122d8844dcb81713cb428cc55280ea2eec5f053f6bfe80cebfb9",
-  "status": "provisional; no quality-based routing change",
+  "scorerSha256": "790e3818a4846cad8e173b58ee84148365cf1645e4a4c94a60cd78d30932a50a",
+  "status": "provisional; no quality-based routing change; DeepSeek Pro incomplete after transport failure",
+  "totals": {
+    "attempts": 94,
+    "apiFailures": 1,
+    "reportedTokens": 31616,
+    "budgetedTokens": 38286,
+    "estimatedReportedAllowanceUsd": 0.0574576,
+    "budgetedAllowanceUsd": 0.07707544
+  },
   "tiers": [
     {
       "tier": "cheap",
-      "source": "docs/evaluations/cheap.json",
-      "sourceSha256": "9cd746b525dacc707679af3d1998e1ddc213d1f2fc23f321d6e10f32785d0709",
-      "startedAt": "2026-11-16T10:24:58.254Z",
-      "environment": {
-        "node": "v24.10.0",
-        "platform": "darwin",
-        "arch": "arm64"
-      },
-      "attempts": 20,
-      "totalTokens": 3712,
+      "sources": [
+        {
+          "path": "docs/evaluations/cheap.json",
+          "sha256": "9cd746b525dacc707679af3d1998e1ddc213d1f2fc23f321d6e10f32785d0709",
+          "startedAt": "2026-11-16T10:24:58.254Z",
+          "environment": {
+            "node": "v24.10.0",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "plannedRequests": 20,
+          "attempts": 20,
+          "budgetedTokens": 3712,
+          "budgetedAllowanceUsd": 0.0008958600000000002
+        },
+        {
+          "path": "docs/evaluations/cheap-beam.json",
+          "sha256": "8f5a31b14cf1c9af3cbf457d682e2a812259219d3d10f21e22e4e13815bf0f41",
+          "startedAt": "2026-11-16T10:43:08.354Z",
+          "environment": {
+            "node": "v24.10.0",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "plannedRequests": 10,
+          "attempts": 10,
+          "budgetedTokens": 2569,
+          "budgetedAllowanceUsd": 0
+        }
+      ],
+      "attempts": 30,
+      "apiFailures": 0,
+      "reportedTokens": 6281,
       "comparison": [
+        {
+          "model": "beam-free",
+          "components": {
+            "correctness": 0.85,
+            "tool": 1,
+            "adherence": 1,
+            "latency": 0.9844677849283332,
+            "efficiency": 0.96864013671875
+          },
+          "score": 94.28107921647083,
+          "allowanceUsd": 0,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "issue-summary",
+              "repetition": 0,
+              "correctness": 0.25,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "component": true,
+                  "cause": false,
+                  "impact": false,
+                  "workaround": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "issue-summary",
+              "repetition": 1,
+              "correctness": 0.25,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "component": true,
+                  "cause": false,
+                  "impact": false,
+                  "workaround": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "priority",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "category": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "priority",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "category": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "structured-json",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "ids": true,
+                  "total": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "structured-json",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "ids": true,
+                  "total": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "explain-code",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "result": true,
+                  "operations": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "explain-code",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "result": true,
+                  "operations": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "cheap-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "cheap-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            }
+          ],
+          "attempts": 10,
+          "meanLatencyMs": 931.9329043,
+          "inputTokens": 1368,
+          "outputTokens": 1201,
+          "apiFailures": 0
+        },
         {
           "model": "mimo-v2.6-flash",
           "components": {
@@ -196,6 +413,7 @@
               }
             }
           ],
+          "attempts": 10,
           "meanLatencyMs": 6533.171924800002,
           "inputTokens": 1086,
           "outputTokens": 624,
@@ -358,6 +576,7 @@
               }
             }
           ],
+          "attempts": 10,
           "meanLatencyMs": 4602.7401500000005,
           "inputTokens": 1234,
           "outputTokens": 768,
@@ -367,16 +586,39 @@
     },
     {
       "tier": "standard",
-      "source": "docs/evaluations/standard.json",
-      "sourceSha256": "0569284d225b16ac1f220def8ec82cbd1e07b5304115c5f6a737713d0e7cdaf3",
-      "startedAt": "2026-11-16T10:24:58.246Z",
-      "environment": {
-        "node": "v24.10.0",
-        "platform": "darwin",
-        "arch": "arm64"
-      },
-      "attempts": 20,
-      "totalTokens": 3816,
+      "sources": [
+        {
+          "path": "docs/evaluations/standard.json",
+          "sha256": "0569284d225b16ac1f220def8ec82cbd1e07b5304115c5f6a737713d0e7cdaf3",
+          "startedAt": "2026-11-16T10:24:58.246Z",
+          "environment": {
+            "node": "v24.10.0",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "plannedRequests": 20,
+          "attempts": 20,
+          "budgetedTokens": 3816,
+          "budgetedAllowanceUsd": 0.00158469
+        },
+        {
+          "path": "docs/evaluations/standard-deepseek.json",
+          "sha256": "518979fed59b5a9e3868a76608a3e4b1b78e7cf4140dd31327ae9c3d3eddd5df",
+          "startedAt": "2026-11-16T10:42:25.115Z",
+          "environment": {
+            "node": "v24.10.0",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "plannedRequests": 10,
+          "attempts": 10,
+          "budgetedTokens": 2766,
+          "budgetedAllowanceUsd": 0.0018269999999999996
+        }
+      ],
+      "attempts": 30,
+      "apiFailures": 0,
+      "reportedTokens": 6582,
       "comparison": [
         {
           "model": "mimo-v2.6-pro",
@@ -548,9 +790,186 @@
               }
             }
           ],
+          "attempts": 10,
           "meanLatencyMs": 3692.8754709999985,
           "inputTokens": 1074,
           "outputTokens": 850,
+          "apiFailures": 0
+        },
+        {
+          "model": "deepseek-v4.1-flash",
+          "components": {
+            "correctness": 0.8,
+            "tool": 1,
+            "adherence": 1,
+            "latency": 0.9432129709016668,
+            "efficiency": 0.9662353515625
+          },
+          "score": 92.09448322464166,
+          "allowanceUsd": 0.0018269999999999998,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "typescript-function",
+              "repetition": 0,
+              "correctness": 0,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "code": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "typescript-function",
+              "repetition": 1,
+              "correctness": 0,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "code": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "fix-test",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "fix-test",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "bounded-refactor",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "bounded-refactor",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "standard-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "standard-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "multi-step",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "values": true,
+                  "count": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "multi-step",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "values": true,
+                  "count": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            }
+          ],
+          "attempts": 10,
+          "meanLatencyMs": 3407.221745900001,
+          "inputTokens": 1658,
+          "outputTokens": 1108,
           "apiFailures": 0
         },
         {
@@ -723,6 +1142,7 @@
               }
             }
           ],
+          "attempts": 10,
           "meanLatencyMs": 9336.412016500002,
           "inputTokens": 1084,
           "outputTokens": 808,
@@ -732,16 +1152,39 @@
     },
     {
       "tier": "hard",
-      "source": "docs/evaluations/hard.json",
-      "sourceSha256": "fc6e1eca16512007442ae27bd2057db3a9987bb7218d2728774c2973def9807a",
-      "startedAt": "2026-11-16T10:24:58.257Z",
-      "environment": {
-        "node": "v24.10.0",
-        "platform": "darwin",
-        "arch": "arm64"
-      },
-      "attempts": 24,
-      "totalTokens": 9344,
+      "sources": [
+        {
+          "path": "docs/evaluations/hard.json",
+          "sha256": "fc6e1eca16512007442ae27bd2057db3a9987bb7218d2728774c2973def9807a",
+          "startedAt": "2026-11-16T10:24:58.257Z",
+          "environment": {
+            "node": "v24.10.0",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "plannedRequests": 24,
+          "attempts": 24,
+          "budgetedTokens": 9344,
+          "budgetedAllowanceUsd": 0.02110441
+        },
+        {
+          "path": "docs/evaluations/hard-deepseek.json",
+          "sha256": "fb6a293f720340ff045a78413a6add46e5fde7cbfb5da34e836ce76704e8ab74",
+          "startedAt": "2026-11-16T10:42:25.115Z",
+          "environment": {
+            "node": "v24.10.0",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "plannedRequests": 12,
+          "attempts": 10,
+          "budgetedTokens": 16079,
+          "budgetedAllowanceUsd": 0.05166348
+        }
+      ],
+      "attempts": 34,
+      "apiFailures": 1,
+      "reportedTokens": 18753,
       "comparison": [
         {
           "model": "mimo-v2.6-pro",
@@ -953,6 +1396,7 @@
               }
             }
           ],
+          "attempts": 12,
           "meanLatencyMs": 5158.7678505833355,
           "inputTokens": 1560,
           "outputTokens": 2003,
@@ -1168,10 +1612,203 @@
               }
             }
           ],
+          "attempts": 12,
           "meanLatencyMs": 8454.062958333334,
           "inputTokens": 1456,
           "outputTokens": 4325,
           "apiFailures": 0
+        },
+        {
+          "model": "deepseek-v4-pro",
+          "components": {
+            "correctness": 0.6666666666666666,
+            "tool": 0.5,
+            "adherence": 0.75,
+            "latency": 0.5932097924194445,
+            "efficiency": 0.6542867024739584
+          },
+          "score": 63.30829828226736,
+          "allowanceUsd": 0.03204564,
+          "complete": false,
+          "apiCompatible": false,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "architecture",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "risks": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "architecture",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "risks": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "pr-review",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "defects": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "pr-review",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "defects": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "untrusted-content",
+              "repetition": 0,
+              "correctness": 0.5,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "issue": false,
+                  "status": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "untrusted-content",
+              "repetition": 1,
+              "correctness": 0.5,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "issue": false,
+                  "status": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complex-bug",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "observedBalance": true,
+                  "correctBalance": true,
+                  "defects": true,
+                  "fixes": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complex-bug",
+              "repetition": 1,
+              "correctness": 0,
+              "adherence": 0,
+              "tool": null,
+              "review": true,
+              "evidence": "transport failure"
+            },
+            {
+              "fixture": "complexity",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "decision": true,
+                  "alternative": true,
+                  "unnecessary": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complexity",
+              "repetition": null,
+              "correctness": 0,
+              "adherence": 0,
+              "tool": null,
+              "review": true,
+              "evidence": "missing/malformed result"
+            },
+            {
+              "fixture": "hard-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "hard-tool",
+              "repetition": null,
+              "correctness": 0,
+              "adherence": 0,
+              "tool": 0,
+              "review": true,
+              "evidence": "missing/malformed result"
+            }
+          ],
+          "attempts": 10,
+          "meanLatencyMs": 17289.4129416,
+          "inputTokens": 1975,
+          "outputTokens": 7434,
+          "apiFailures": 1
         }
       ]
     }

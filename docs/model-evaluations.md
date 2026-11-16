@@ -33,9 +33,17 @@ npm run evaluate-models -- --discover --out catalogue-new.json
 npm run evaluate-models -- --run --no-extra-usage --tier cheap --models mimo-v2.6-flash,glm-5.3-flash --out cheap-new.json
 npm run evaluate-models -- --run --no-extra-usage --tier standard --models mimo-v2.6-flash,mimo-v2.6-pro --out standard-new.json
 npm run evaluate-models -- --run --no-extra-usage --tier hard --models mimo-v2.6-pro,kimi-k2.7-code --out hard-new.json
+# Owner-confirmed Global access; Beam probe explicitly authorized separately.
+npm run evaluate-models -- --run --no-extra-usage --tier standard --models deepseek-v4.1-flash --out standard-deepseek-new.json
+npm run evaluate-models -- --run --no-extra-usage --tier hard --models deepseek-v4-pro --out hard-deepseek-new.json
+npm run evaluate-models -- --run --no-extra-usage --tier cheap --models beam-free --out cheap-beam-new.json
 
 # Recompute deterministic scores offline, without trusting saved score fields.
 npm run evaluate-models -- --report docs/evaluations/cheap.json
+# Combine disjoint candidates with matching fixtures/repetitions/request settings.
+npm run evaluate-models -- --report docs/evaluations/standard.json,docs/evaluations/standard-deepseek.json
+npm run evaluate-models -- --report docs/evaluations/hard.json,docs/evaluations/hard-deepseek.json
+npm run evaluate-models -- --report docs/evaluations/cheap.json,docs/evaluations/cheap-beam.json
 npm run typecheck
 npm test
 ```
@@ -104,6 +112,8 @@ is substituted into numeric scores.
 Ranking uses fixed five-point score bands, then lower estimated allowance
 consumption, then score, then exact model ID. Bands are a declared small-sample
 indifference policy, not a confidence interval; near-boundary rankings can differ.
+Combined offline reports reject mismatched fixtures, repetition counts, endpoint,
+system instructions or request settings, and duplicate candidate plans.
 Only complete, eligible, compatible, reviewed evidence could justify a primary
 and fallback change. Ranked rows are not automatic routing recommendations.
 
@@ -115,18 +125,25 @@ policy is unchanged. The evaluation estimates input/output at reviewed uncached
 rates, not cache discounts; these estimates need not equal billed allowance.
 
 - MiMo Flash/Pro, GLM Flash and Kimi Code: documented no training, zero retention.
-- DeepSeek Flash/Pro: documented no training and zero retention, but Global-region
-  permission is owner-only; current ZDR agreement ends **2026-11-30**. Not tested
-  or enabled by this change.
-- Beam: no training, 30-day retention, temporary offer and regional exclusions;
-  blocked from this evaluation pending owner regional confirmation. Free is not
-  proof of accessibility.
+- DeepSeek Flash/Pro: documented no training and zero retention. On
+  **2026-11-16**, the owner confirmed Go is already configured for **Global**
+  regions. That regional prerequisite is satisfied and the evaluation block is
+  removed. Follow-up requests were accepted for both models, but Pro's run was
+  incomplete after a transport failure (details below). The current ZDR agreement
+  ends **2026-11-30**; candidate eligibility expires after that date unless the
+  reviewed agreement is renewed. No workspace setting is changed by this PR.
+- Beam: no training, 30-day retention, temporary offer and regional exclusions.
+  The owner explicitly requested synthetic API testing after the initial runs.
+  This removes the evaluation block for that authorized probe, not the provider's
+  geographic exclusions. Free is not proof of accessibility.
 - Iceman Contributor Free and Muse Spark Contributor 1.2/1.3: **excluded** because
   request data is used to improve/train models, even if the API would accept them.
 - Crouton: no current reviewed privacy evidence; absence from discovery is also
   an availability exclusion.
 - Other discovered IDs remain unreviewed, not silently eligible. LongCat 2.5
-  Free requires Global-region permission; no restricted setting is enabled.
+  Free's Global-region prerequisite is also satisfied, but it has not been added
+  to the reviewed candidate set. Global permission does not waive training,
+  retention, model-specific geographic exclusions, or API compatibility gates.
 
 Owner confirmed Extra Usage disabled before these live calls. No authentication,
 workspace privacy, regional settings, billing configuration or Actions changes
@@ -146,7 +163,7 @@ All three tier runs overlapped; each run made sequential requests internally.
 Endpoint: `https://opencode.ai/inference/go/openai/v1/chat/completions`.
 The source branch started from merged PR #4, main commit `264c94b`.
 
-**64 requests**, **16,872 reported tokens**, **zero API/transport failures**.
+Initial screening: **64 requests**, **16,872 reported tokens**, **zero API/transport failures**.
 All six candidate/tier combinations completed and passed both observed tool
 repetitions. Aggregate estimated uncached allowance consumption was
 **$0.02358496**, not a claim about actual charged dollars.
@@ -154,6 +171,8 @@ The [recomputed comparison](evaluations/comparison.json) includes source hashes,
 scorer hash, per-field evidence, components, mean latency and token totals.
 The original run files remain untouched; offline reporting recomputes scores
 rather than trusting saved score fields.
+Embedded candidate-policy snapshots describe approval **at run time**; they are
+not rewritten to pretend Global access or Beam testing had been approved earlier.
 
 | Tier | Exact API ID | Score / 100 | Exact-field correctness | Tool calls | Structural adherence | Mean latency | Input / output tokens | Est. allowance |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -164,7 +183,60 @@ rather than trusting saved score fields.
 | Hard | `mimo-v2.6-pro` | 97.32 | 95.83% | 2/2 | 100% | 5.16 s | 1,560 / 2,003 | $0.00242121 |
 | Hard | `kimi-k2.7-code` | 94.36 | 89.58% | 2/2 | 100% | 8.45 s | 1,456 / 4,325 | $0.01868320 |
 
-Interpretation, **not numeric score corrections**:
+### Owner-authorized follow-up
+
+After the initial screening, the owner confirmed Global access and requested
+testing of the previously region-blocked DeepSeek models and Beam. The follow-up
+uses the **same frozen fixtures**, two repetitions and identical request limits.
+Beam is screened on cheap tasks only: the planned 22 DeepSeek and 10 Beam calls
+bring the combined request count to at most **96**, within the authorized 100.
+No standard/hard capability claim is made for Beam.
+
+These are later runs, not randomized contemporaneous comparisons with the
+initial candidates. Global access approval is not a benchmark result; actual API
+acceptance and task outputs are recorded in `standard-deepseek.json`,
+`hard-deepseek.json`, and `cheap-beam.json`.
+
+| Tier | Exact API ID | Score / 100 | Exact-field correctness | Tool calls | Structural adherence | Mean latency | Input / output tokens | Est. allowance |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Cheap | `beam-free` | 94.28 | 85% | 2/2 | 100% | 0.93 s | 1,368 / 1,201 | $0 |
+| Standard | `deepseek-v4.1-flash` | 92.09 | 80% | 2/2 | 100% | 3.41 s | 1,658 / 1,108 | $0.00182700 |
+| Hard | `deepseek-v4-pro` (incomplete) | 63.31 | 66.67% | 1/2 planned | 75% | 17.29 s | 1,975 / 7,434 | $0.03204564 reported usage only |
+
+Beam accepted all ten requests with no regional/API rejection. Its only
+exact-field mismatches were summary paraphrases; no factual defect is established
+by those mismatches. It ranks first in the cheap screening comparison with zero
+estimated allowance consumption, but the tiny sample, temporary offer and
+30-day retention still warrant caution before any production promotion.
+
+DeepSeek Flash accepted all ten requests and both tool calls. Both clamp answers
+use the opposite nesting of `Math.min`/`Math.max`, which is mathematically
+equivalent under the fixture's `min <= max` assumption but fails the deliberately
+conservative code string check. Its score is effectively tied with MiMo Pro
+(92.09 versus 92.15); this does not establish a quality difference. The existing
+DeepSeek standard primary is retained provisionally, now with direct API evidence.
+
+DeepSeek Pro accepted nine requests, including the first tool call, then the
+second `complex-bug` request timed out at **60 seconds**. The runner recorded a
+transport failure and stopped the candidate without retrying. The second
+`complexity` and `hard-tool` observations are therefore **unrun**, not successful
+or proven incorrect. Their zero credit and the failed request are included in
+the 63.31 screening score and 1/2 planned tool reliability. This candidate is
+**incomplete** and does not pass the observed compatibility/reliability gate;
+the score is not a standalone judgment of its reasoning quality. Both issue-ID
+extractions also returned strings, preserving the known fixture ambiguity.
+Mean latency includes the timeout; reported token totals exclude its unknown
+usage. No new hard-tier approval is supported by this run.
+
+**Combined actual totals:** 94 attempted calls (93 responses, one transport
+failure), **31,616 reported tokens** excluding unknown timeout usage.
+Estimated allowance from reported usage is **$0.05745760**. Conservative local
+bookkeeping, including the failed request reservation, is **38,286 tokens** and
+**$0.07707544**; neither figure is a claim about actual billed usage.
+The follow-ups started at **10:42:25 UTC** (DeepSeek) and **10:43:08 UTC** (Beam),
+in the same environment as the initial screening.
+
+Initial screening interpretation, **not numeric score corrections**:
 
 - Cheap: summary paraphrases incur exact-match penalties for both candidates;
   these are ambiguous, not established factual errors. MiMo returned `[9,4]`
@@ -177,15 +249,18 @@ Interpretation, **not numeric score corrections**:
   cannot distinguish capability reliably. One Flash refactor dropped `export`,
   a more concrete bounded-refactor failure. Pro's 4.44-point advantage is small,
   and Flash uses less estimated allowance. **No new standard selection**:
-  DeepSeek primary was not evaluated under unconfirmed Global permission.
+  DeepSeek primary was not evaluated because Global permission had not yet been
+  confirmed when the initial runs were planned. The owner's subsequent
+  confirmation removed that blocker and prompted a separate follow-up run.
 - Hard: the extraction prompt did not explicitly require a numeric issue ID;
   returning `"42"` incurs penalties but is ambiguous, not evidence of obeying
   injection. Neither model emitted `PWNED` or followed the malicious tool
   instruction in the observed runs. Kimi added `larger-timeout` as a bug fix,
   and once returned balance 10 rather than 70; retry wording also warrants
   review before interpreting that balance discrepancy. Pro looks promising at
-  lower allowance consumption, but the simplified fixtures and untested
-  DeepSeek/Qwen baseline do **not** justify a new primary/fallback pair.
+  lower allowance consumption, but the simplified fixtures and initial
+  DeepSeek/Qwen evidence gap do **not** by themselves justify a new
+  primary/fallback pair; the separate DeepSeek follow-up is reported above.
 
 Do not tune prompts or expected answers after seeing these outputs and then
 compare the new scores as if they came from the original run. Improve ambiguous
@@ -199,20 +274,28 @@ Existing primary and next fallback are retained **provisionally**:
 | Tier | Retained primary | Retained next fallback | Evidence status |
 | --- | --- | --- | --- |
 | Cheap | `mimo-v2.6-flash` | `glm-5.3-flash` | Directly screened; review flags remain |
-| Standard | `deepseek-v4.1-flash` | `mimo-v2.6-pro` | Primary not tested; existing order retained |
-| Hard | `deepseek-v4-pro` | `qwen3.8-max` | Both untested; existing order retained |
+| Standard | `deepseek-v4.1-flash` | `mimo-v2.6-pro` | Both directly screened; ambiguous clamp checks; existing order retained |
+| Hard | `deepseek-v4-pro` | `qwen3.8-max` | Primary follow-up incomplete after timeout; Qwen untested; existing order retained provisionally |
+
+The incomplete Pro run does not re-certify the historical hard primary. Its
+existing position is retained under the task's insufficient-evidence rule, not
+because it passed this screening. Likewise Beam's successful cheap screening
+does not justify promoting it on untested standard/hard tasks. A larger,
+unambiguous evaluation is needed before a quality-based routing change.
 
 `config/models.json` changes **only** remove Iceman from every tier for its
 training-required terms, and Crouton from every tier for absence from the dated
 catalogue. These are mandatory privacy/availability exclusions, not unsupported
 quality judgments. Remaining route order, provider defaults, pricing policy,
 external fallbacks and local fallback are unchanged. Beam and DeepSeek remain
-conditional historical routes, not newly approved or proven accessible here.
+historical routes, not newly selected by this evaluation. DeepSeek's
+Global-region prerequisite is now owner-confirmed; Beam's separate geographic
+exclusions still apply despite the Global setting.
 Historical zero-price entries remain for compatibility; explicit manual
 overrides are outside the evaluation approval boundary.
 `config/legacy-models.json` is unchanged.
 
-Validation: `npm run typecheck` passed; `npm test` passed **189 tests in 20 files**;
+Validation: `npm run typecheck` passed; `npm test` passed **190 tests in 20 files**;
 `git diff --check` passed. Tests cover scoring/weights, malformed and missing
 observations, actual versus textual tool calls, privacy/availability eligibility,
 catalogue validation, deterministic cost-aware tie-breaking and fallback order.
@@ -231,7 +314,7 @@ Temperature and reasoning controls are omitted (provider defaults); models may
 therefore use different reasoning budgets. The 4,096-token screening limit is
 also lower than production's 8,192-token Go ceiling.
 
-Owner review is needed for more allowance, adding reviewed candidates, regional
-permission, accepting retention terms, renewed DeepSeek ZDR, semantic review,
+Owner review is needed for more allowance, adding reviewed candidates, remaining
+model-specific regional restrictions, accepting retention terms, renewed DeepSeek ZDR, semantic review,
 and approving any future quality-based routing change. Never enable training
 permissions to make a model pass the privacy gate.
