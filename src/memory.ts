@@ -93,6 +93,21 @@ export class MemoryStore {
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS model_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_run_id INTEGER NOT NULL,
+        session_id INTEGER NOT NULL,
+        provider TEXT NOT NULL,
+        model TEXT,
+        outcome TEXT NOT NULL CHECK (outcome IN ('used', 'failed')),
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        input_tokens INTEGER NOT NULL DEFAULT 0,
+        output_tokens INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (agent_run_id) REFERENCES agent_runs(id) ON DELETE CASCADE,
+        FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+      );
     `);
   }
 
@@ -202,8 +217,8 @@ export class MemoryStore {
     inputTokens?: number;
     outputTokens?: number;
     totalTokens?: number;
-  }): void {
-    this.db.prepare(`
+  }): number {
+    const result = this.db.prepare(`
       INSERT INTO agent_runs (
         session_id, agent, model, duration_ms, success,
         requests, input_tokens, output_tokens, total_tokens
@@ -218,6 +233,37 @@ export class MemoryStore {
       input.inputTokens ?? 0,
       input.outputTokens ?? 0,
       input.totalTokens ?? 0,
+    );
+    return Number(result.lastInsertRowid);
+  }
+
+  // One row per model invocation attempt inside an agent run. Only provider and
+  // model identifiers, outcome and numeric usage are stored: never prompts,
+  // responses, credentials or provider error text.
+  addModelUsage(input: {
+    agentRunId: number;
+    sessionId: number;
+    provider: string;
+    model?: string;
+    outcome: "used" | "failed";
+    durationMs: number;
+    inputTokens?: number;
+    outputTokens?: number;
+  }): void {
+    this.db.prepare(`
+      INSERT INTO model_usage (
+        agent_run_id, session_id, provider, model, outcome,
+        duration_ms, input_tokens, output_tokens
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      input.agentRunId,
+      input.sessionId,
+      input.provider,
+      input.model ?? null,
+      input.outcome,
+      input.durationMs,
+      input.inputTokens ?? 0,
+      input.outputTokens ?? 0,
     );
   }
 
@@ -234,17 +280,46 @@ export class MemoryStore {
       FROM agent_runs
     `).get() as Record<string, number>;
 
+    // Provider/model performance comes from per-invocation model_usage rows so
+    // tokens and latency follow the model that actually served each call. Runs
+    // recorded before model_usage existed have no invocation rows and keep their
+    // original agent_runs attribution, so existing databases stay readable.
     const providerModels = this.db.prepare(`
       SELECT
-        COALESCE(model, 'unknown') AS model,
-        COUNT(*) AS runs,
-        COALESCE(SUM(success), 0) AS successfulRuns,
-        COALESCE(SUM(requests), 0) AS requests,
-        COALESCE(SUM(input_tokens), 0) AS inputTokens,
-        COALESCE(SUM(output_tokens), 0) AS outputTokens,
-        COALESCE(SUM(total_tokens), 0) AS totalTokens,
-        COALESCE(AVG(duration_ms), 0) AS averageDurationMs
-      FROM agent_runs
+        model,
+        SUM(runs) AS runs,
+        SUM(successfulRuns) AS successfulRuns,
+        SUM(requests) AS requests,
+        SUM(inputTokens) AS inputTokens,
+        SUM(outputTokens) AS outputTokens,
+        SUM(totalTokens) AS totalTokens,
+        SUM(totalDurationMs) AS totalDurationMs
+      FROM (
+        SELECT
+          provider || ':' || COALESCE(model, 'default') AS model,
+          COUNT(*) AS runs,
+          SUM(CASE WHEN outcome = 'used' THEN 1 ELSE 0 END) AS successfulRuns,
+          COUNT(*) AS requests,
+          COALESCE(SUM(input_tokens), 0) AS inputTokens,
+          COALESCE(SUM(output_tokens), 0) AS outputTokens,
+          COALESCE(SUM(input_tokens + output_tokens), 0) AS totalTokens,
+          COALESCE(SUM(duration_ms), 0) AS totalDurationMs
+        FROM model_usage
+        GROUP BY provider, model
+        UNION ALL
+        SELECT
+          COALESCE(model, 'unknown') AS model,
+          COUNT(*) AS runs,
+          COALESCE(SUM(success), 0) AS successfulRuns,
+          COALESCE(SUM(requests), 0) AS requests,
+          COALESCE(SUM(input_tokens), 0) AS inputTokens,
+          COALESCE(SUM(output_tokens), 0) AS outputTokens,
+          COALESCE(SUM(total_tokens), 0) AS totalTokens,
+          COALESCE(SUM(duration_ms), 0) AS totalDurationMs
+        FROM agent_runs
+        WHERE NOT EXISTS (SELECT 1 FROM model_usage WHERE model_usage.agent_run_id = agent_runs.id)
+        GROUP BY model
+      )
       GROUP BY model
       ORDER BY runs DESC, model
     `).all().map((row) => {
@@ -257,7 +332,7 @@ export class MemoryStore {
         inputTokens: Number(item.inputTokens),
         outputTokens: Number(item.outputTokens),
         totalTokens: Number(item.totalTokens),
-        averageDurationMs: Math.round(Number(item.averageDurationMs)),
+        averageDurationMs: Math.round(Number(item.totalDurationMs) / Number(item.runs)),
       };
     });
 

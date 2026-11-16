@@ -61,12 +61,12 @@ describe("CEO context injection", () => {
   it("respects explicit cheap routing even for strategy wording", async () => {
     await ask("Choose our business strategy", { tier: "cheap" });
     expect(vi.mocked(run).mock.calls[0]![1]).not.toContain("CEO CONTEXT");
-    expect(createRoutedModel).toHaveBeenCalledWith("cheap", "auto", expect.any(Object));
+    expect(createRoutedModel).toHaveBeenCalledWith("cheap", "auto", expect.any(Object), expect.any(Function));
   });
 
   it("keeps CEO calls on the existing route with provider/tier overrides", async () => {
     await ask("Recommend the next action", { ceo: true, tier: "cheap", provider: "ollama" });
-    expect(createRoutedModel).toHaveBeenCalledWith("cheap", "ollama", expect.any(Object));
+    expect(createRoutedModel).toHaveBeenCalledWith("cheap", "ollama", expect.any(Object), expect.any(Function));
     expect(String(vi.mocked(run).mock.calls[0]![0].instructions)).toContain("CEO mode:");
   });
 

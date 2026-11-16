@@ -11,6 +11,20 @@ import { productionPrivacyEligibility } from "./model-policy.js";
 export type ProviderModel = Model;
 export type ModelFactory = (route: ModelRoute) => Promise<Model>;
 
+// One record per invocation attempt. Skipped routes (privacy, missing key,
+// budget, cooldown) are never attempted, so they are logged as safe fallback
+// reasons instead of recorded here. Records never contain prompts, responses,
+// credentials or provider error text.
+export interface ModelUsageRecord {
+  provider: LlmProvider;
+  model: string;
+  outcome: "used" | "failed";
+  durationMs: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+export type ModelUsageReporter = (record: ModelUsageRecord) => void;
+
 const goSession = `dr-watson-${randomUUID()}`;
 const goCooldowns = new Map<string, number>();
 const GO_COOLDOWN_MS = 5 * 60 * 60 * 1000;
@@ -38,6 +52,7 @@ export function guardedModel(
   warn: (message: string) => void = console.warn,
   history?: ExpendableHistory,
   failover: (error: unknown) => boolean = isProviderFailoverError,
+  report: ModelUsageReporter | undefined = undefined,
 ): Model {
   return {
     async getResponse(request: ModelRequest): Promise<ModelResponse> {
@@ -103,6 +118,7 @@ export function guardedModel(
         if (route.provider !== "ollama" && status.softLimit > 0 && status.spent >= status.softLimit) {
           warn("Warning: monthly soft budget limit reached.");
         }
+        const attemptStartedAt = performance.now();
         try {
           const model = await factory(route);
           // Recheck all privacy restrictions after asynchronous initialization.
@@ -119,8 +135,19 @@ export function guardedModel(
           if (route.provider !== "ollama" && settledStatus.softLimit > 0 && settledStatus.spent >= settledStatus.softLimit) {
             warn("Warning: monthly soft budget limit reached.");
           }
+          report?.({
+            provider: route.provider, model: settings.model, outcome: "used",
+            durationMs: Math.round(performance.now() - attemptStartedAt),
+            inputTokens: usage && Number.isFinite(usage.inputTokens) && usage.inputTokens >= 0 ? usage.inputTokens : 0,
+            outputTokens: usage && Number.isFinite(usage.outputTokens) && usage.outputTokens >= 0 ? usage.outputTokens : 0,
+          });
           return response;
         } catch (error) {
+          report?.({
+            provider: route.provider, model: settings.model, outcome: "failed",
+            durationMs: Math.round(performance.now() - attemptStartedAt),
+            inputTokens: 0, outputTokens: 0,
+          });
           const statusCode = error && typeof error === "object" && "status" in error ? Number(error.status) : undefined;
           if (route.provider === "opencode" && statusCode === 429) {
             goCooldowns.set(routeKey, Date.now() + GO_COOLDOWN_MS);
@@ -147,8 +174,8 @@ export async function createProviderModel(provider: LlmProvider, model?: string)
   return guardedModel(provider === "ollama" ? [{ provider }] : [{ provider, model }, { provider: "ollama" }]);
 }
 
-export function createRoutedModel(tier: TaskTier, override: LlmProvider | "auto" = config.provider, history?: ExpendableHistory): Model {
-  return guardedModel(modelRoutes(tier, override), undefined, undefined, undefined, history);
+export function createRoutedModel(tier: TaskTier, override: LlmProvider | "auto" = config.provider, history?: ExpendableHistory, report?: ModelUsageReporter): Model {
+  return guardedModel(modelRoutes(tier, override), undefined, undefined, undefined, history, undefined, report);
 }
 
 export function configureModelProvider(): void {
