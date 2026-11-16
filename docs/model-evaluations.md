@@ -156,16 +156,22 @@ Owner confirmed Extra Usage disabled before these live calls. No authentication,
 workspace privacy, regional settings, billing configuration or Actions changes
 are performed. The runner cannot independently verify the Console toggle.
 
-Production also enforces dated approvals from this same validated metadata:
+Production enforces privacy restrictions from this same validated metadata:
 `src/model-policy.ts` shares the schema and UTC expiry check with evaluation
-eligibility. `guardedModel` checks the **resolved** Go model before budget
-reservation/provider construction, and again immediately before invocation if
-initialization crossed the deadline. Defaults, explicit overrides, agent calls
-and the local API all use this guard. Expired models are skipped with a warning;
+eligibility. The shared `productionPrivacyEligibility` predicate rejects known
+training-required, explicitly blocked, or expired Go models. `guardedModel`
+checks the **resolved** model before budget reservation/provider construction,
+and rechecks every restriction immediately before invocation after asynchronous
+initialization. Defaults, explicit overrides, agent calls and the local API all
+use this guard. Prohibited models are skipped with a warning;
 remaining Go, external and Ollama fallbacks retain their configured order.
 This enforces required `privacyValidThrough` dates, not the evaluation-only
 30-day discovery-review freshness rule. It does not approve new models, change
 regional settings, renew terms, or alter the retained route configuration.
+Models absent from the reviewed policy table retain the existing manual-model
+path, with an explicit unreviewed-policy warning and the existing pricing/budget
+requirements. Absence is not privacy approval and does not make a model eligible
+for evaluation. Known restrictions cannot be bypassed by manual overrides.
 
 ## Results and decisions
 
@@ -313,7 +319,7 @@ Historical zero-price entries remain for compatibility; explicit manual
 overrides are outside the evaluation approval boundary.
 `config/legacy-models.json` is unchanged.
 
-Correction validation: `npm run typecheck` passed; `npm test` passed **216 tests in 22 files**;
+Correction validation: `npm run typecheck` passed; `npm test` passed **221 tests in 22 files**;
 `git diff --check` passed. Tests cover scoring/weights, malformed and missing
 observations, actual versus textual tool calls, privacy/availability eligibility,
 catalogue validation, deterministic cost-aware tie-breaking and fallback order.

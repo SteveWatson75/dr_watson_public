@@ -6,7 +6,7 @@ import { budgetLedger, estimatedCost, type BudgetLedger } from "./budget.js";
 import { isProviderFailoverError } from "./failover.js";
 import { modelRoutes, type ModelRoute } from "./provider-chain.js";
 import { estimatedInputTokens, trimHistory, type ExpendableHistory } from "./haiku-context.js";
-import { candidateCatalogue, privacyApprovalExpired } from "./model-policy.js";
+import { productionPrivacyEligibility } from "./model-policy.js";
 
 export type ProviderModel = Model;
 export type ModelFactory = (route: ModelRoute) => Promise<Model>;
@@ -45,16 +45,19 @@ export function guardedModel(
         const settings = providerSettings(route.provider, route.model);
         const routeKey = `${route.provider}:${settings.model}`;
         // Check the resolved model, including explicit provider/model overrides.
-        // Skip before reserving budget or constructing an expired provider.
-        const policy = route.provider === "opencode"
-          ? candidateCatalogue.candidates.find((candidate) => candidate.id === settings.model) : undefined;
+        // Skip before reserving budget or constructing a prohibited provider.
         const privacyBlocked = () => {
-          if (!privacyApprovalExpired(policy)) return false;
-          reason = `${routeKey} privacy approval expired after ${policy!.privacyValidThrough}.`;
+          if (route.provider !== "opencode") return false;
+          const privacy = productionPrivacyEligibility(settings.model);
+          if (privacy.eligible) return false;
+          reason = `${routeKey} ${privacy.reason}.`;
           warn(`${reason} Trying the next configured route.`);
           return true;
         };
         if (privacyBlocked()) continue;
+        if (route.provider === "opencode" && !productionPrivacyEligibility(settings.model).reviewed) {
+          warn(`${routeKey} has no reviewed privacy policy; allowing the existing manual-model path, not granting privacy approval.`);
+        }
         if (route.provider === "opencode" && (goCooldowns.get(routeKey) ?? 0) > Date.now()) {
           reason = `${routeKey} is cooling down after a Go usage limit.`;
           warn(`${reason} Trying the next configured route.`);
@@ -101,7 +104,7 @@ export function guardedModel(
         }
         try {
           const model = await factory(route);
-          // Factory initialization may cross the UTC approval deadline.
+          // Recheck all privacy restrictions after asynchronous initialization.
           if (privacyBlocked()) continue;
           const response = await model.getResponse(boundedRequest);
           const usage = response.usage;

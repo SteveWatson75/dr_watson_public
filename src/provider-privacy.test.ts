@@ -4,6 +4,7 @@ import { BudgetLedger } from "./budget.js";
 import { config } from "./config.js";
 import { guardedModel, type ModelFactory } from "./provider.js";
 import { modelRoutes } from "./provider-chain.js";
+import { candidateCatalogue, productionPrivacyEligibility } from "./model-policy.js";
 
 const request: ModelRequest = { input: "Synthetic test", modelSettings: {}, tools: [], handoffs: [], outputType: "text", tracing: false };
 const originalConfig = { ...config };
@@ -30,6 +31,66 @@ afterEach(() => {
 });
 
 describe("production privacy expiry", () => {
+  it("blocks an Iceman manual override before provider construction or budget reservation", async () => {
+    Object.assign(config, { provider: "opencode", model: "iceman-contributor-free" });
+    const factory = vi.fn<ModelFactory>(async () => fakeModel());
+    const reserve = vi.spyOn(ledger, "reserve");
+    const warn = vi.fn();
+    await guardedModel([{ provider: "opencode", model: "mimo-v2.6-flash" }, { provider: "ollama" }], ledger, factory, warn).getResponse(request);
+    expect(factory).toHaveBeenCalledExactlyOnceWith({ provider: "ollama" });
+    expect(reserve.mock.calls.map(([provider]) => provider)).toEqual(["ollama"]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("requires training on request data"));
+  });
+
+  it("permits a reviewed manual override without changing its requested model", async () => {
+    Object.assign(config, { provider: "opencode", model: "mimo-v2.6-pro" });
+    const factory = vi.fn<ModelFactory>(async () => fakeModel());
+    const reserve = vi.spyOn(ledger, "reserve");
+    await guardedModel([{ provider: "opencode" }, { provider: "ollama" }], ledger, factory, vi.fn()).getResponse(request);
+    expect(factory).toHaveBeenCalledExactlyOnceWith({ provider: "opencode" });
+    expect(reserve).toHaveBeenCalledWith("opencode", "mimo-v2.6-pro", 0);
+    expect(productionPrivacyEligibility("mimo-v2.6-pro")).toEqual({ eligible: true, reviewed: true });
+  });
+
+  it("explicitly preserves unreviewed manual models with a warning and existing pricing requirements", async () => {
+    Object.assign(config, { provider: "opencode", model: "owner-manual-model" });
+    vi.stubEnv("LLM_INPUT_USD_PER_MILLION", "0");
+    vi.stubEnv("LLM_OUTPUT_USD_PER_MILLION", "0");
+    const factory = vi.fn<ModelFactory>(async () => fakeModel());
+    const warn = vi.fn();
+    await guardedModel([{ provider: "opencode" }, { provider: "ollama" }], ledger, factory, warn).getResponse(request);
+    expect(factory).toHaveBeenCalledExactlyOnceWith({ provider: "opencode" });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("has no reviewed privacy policy"));
+    expect(productionPrivacyEligibility("owner-manual-model")).toEqual({ eligible: true, reviewed: false });
+  });
+
+  it.each(["training", "blocked"] as const)("rechecks %s restrictions immediately before invocation", async (restriction) => {
+    const policy = candidateCatalogue.candidates.find((candidate) => candidate.id === "mimo-v2.6-pro")!;
+    const original = { ...policy };
+    const prohibited = fakeModel();
+    const fallback = fakeModel();
+    const factory = vi.fn<ModelFactory>(async (route) => {
+      if (route.provider === "opencode") {
+        if (restriction === "training") policy.training = "yes";
+        else policy.blocked = true;
+        return prohibited;
+      }
+      return fallback;
+    });
+    try {
+      await guardedModel([{ provider: "opencode", model: policy.id }, { provider: "ollama" }], ledger, factory, vi.fn()).getResponse(request);
+      expect(prohibited.getResponse).not.toHaveBeenCalled();
+      expect(fallback.getResponse).toHaveBeenCalledOnce();
+      // A subsequent request must skip even provider construction.
+      factory.mockClear();
+      await guardedModel([{ provider: "opencode", model: policy.id }, { provider: "ollama" }], ledger, factory, vi.fn()).getResponse(request);
+      expect(factory).toHaveBeenCalledExactlyOnceWith({ provider: "ollama" });
+    } finally {
+      delete policy.blocked;
+      Object.assign(policy, original);
+    }
+  });
+
   it.each(["deepseek-v4.1-flash", "deepseek-v4-pro"])("rechecks %s on each call and skips it after UTC expiry", async (id) => {
     const primary = { provider: "opencode", model: id } as const;
     const fallback = { provider: "opencode", model: "mimo-v2.6-pro" } as const;

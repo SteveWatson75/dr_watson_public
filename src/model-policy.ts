@@ -25,3 +25,19 @@ export function privacyApprovalExpired(policy: Pick<Candidate, "privacyValidThro
   if (!policy?.privacyValidThrough) return false;
   return !Number.isFinite(now.getTime()) || now.getTime() >= Date.parse(policy.privacyValidThrough) + 86400_000;
 }
+
+// Production preserves manual models outside this reviewed table; callers must
+// surface that unreviewed status, not present it as privacy approval. Evaluation
+// eligibility remains stricter and separately requires reviewed evidence.
+export function productionPrivacyEligibility(model: string, now = new Date()): {
+  eligible: boolean; reviewed: boolean; reason?: string;
+} {
+  const policy = candidateCatalogue.candidates.find((candidate) => candidate.id === model);
+  if (!policy) return { eligible: true, reviewed: false };
+  if (policy.training === "yes") return { eligible: false, reviewed: true, reason: "requires training on request data" };
+  if (policy.blocked) return { eligible: false, reviewed: true, reason: `privacy policy blocked: ${policy.restrictions}` };
+  if (privacyApprovalExpired(policy, now)) {
+    return { eligible: false, reviewed: true, reason: `privacy approval expired after ${policy.privacyValidThrough}` };
+  }
+  return { eligible: true, reviewed: true };
+}
