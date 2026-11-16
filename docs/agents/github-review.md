@@ -50,7 +50,9 @@ at the reviewed SHA; CI is not executed or treated as an approval gate here.
   model before optional material (ties break by path):
   **0 — security-sensitive configuration and guardrails**: `.github/`, `.opencode/`,
   `opencode.json(c)`, `AGENTS.md`, `CODEOWNERS`, `config/`, `src/github-review*`,
-  `src/model-policy*`, `src/provider*`, `src/local-api*`, and any file named for
+  `src/model-policy*`, `src/provider*`, `src/local-api*`, the reorganized
+  `src/providers/`, `src/github/github-review*`, `src/routing/provider-chain*`,
+  and any file named for
   auth/authorization/permission/privacy/secret/credential/security/guardrail/policy,
   including security-policy documents.
   **1 — production implementation and runtime configuration**: all remaining source,
@@ -93,7 +95,8 @@ at the reviewed SHA; CI is not executed or treated as an approval gate here.
   config/guardrail path set and extends it to security-sensitive non-test files such as
   `SECURITY.md`, `src/auth.ts` and `docs/security-policy.md`. Test-only changes stay
   test-classified (priority 2); only the historical guardrail-module test paths
-  (`src/github-review*`, `src/model-policy*`, `src/provider*`, `src/local-api*`) keep their
+  (`src/github-review*`, `src/model-policy*`, `src/provider*`, `src/local-api*`,
+  plus `src/providers/`, `src/github/github-review*` and `src/routing/provider-chain*`) keep their
   existing human-inspection requirement.
 - New-side added/context and old-side deleted line references survive hunk selection. Coverage means the **intended selected diff
   scope**, not full repository correctness or inspection of excluded evidence.

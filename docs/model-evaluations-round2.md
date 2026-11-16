@@ -109,7 +109,7 @@ route order, price table or manual-override path changes.
 ## 4. Versioned fixtures (v2)
 
 Historical fixture definitions and every file in `docs/evaluations/*.json` are
-unchanged. The new set is `src/evaluation-fixtures-v2.ts`, selected with
+unchanged. The new set is `src/evaluation/evaluation-fixtures-v2.ts`, selected with
 `--fixture-set v2`, and recorded in new manifests as `fixtureSet: 2`.
 
 | Fixture | Tier | Coverage | Tool |

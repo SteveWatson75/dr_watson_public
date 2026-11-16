@@ -1,17 +1,17 @@
 import { expect, it, vi } from "vitest";
 import { createInterface } from "node:readline/promises";
-import { runConversation } from "./conversation.js";
+import { runConversation } from "./conversation/conversation.js";
 
 vi.mock("node:readline/promises", () => ({ createInterface: vi.fn() }));
-vi.mock("./conversation.js", () => ({ runConversation: vi.fn().mockResolvedValue("Advice") }));
-vi.mock("./provider.js", () => ({ configureModelProvider: vi.fn() }));
+vi.mock("./conversation/conversation.js", () => ({ runConversation: vi.fn().mockResolvedValue("Advice") }));
+vi.mock("./providers/provider.js", () => ({ configureModelProvider: vi.fn() }));
 vi.mock("./budget.js", () => ({
   budgetLedger: () => ({ status: () => ({}), close: vi.fn() }),
   formatBudget: () => "Budget unchanged",
 }));
-vi.mock("./extract-memory.js", () => ({ extractMemories: vi.fn() }));
-vi.mock("./memory.js", async (importOriginal) => {
-  const { MemoryStore } = await importOriginal<typeof import("./memory.js")>();
+vi.mock("./conversation/extract-memory.js", () => ({ extractMemories: vi.fn() }));
+vi.mock("./conversation/memory.js", async (importOriginal) => {
+  const { MemoryStore } = await importOriginal<typeof import("./conversation/memory.js")>();
   return { MemoryStore: class extends MemoryStore { constructor() { super(":memory:"); } } };
 });
 

@@ -43,7 +43,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: node_modules/.bin/tsx src/github-review-cli.ts collect "$PR_NUMBER" "$REVIEW_SHA" "$BASE_SHA"
+        run: node_modules/.bin/tsx src/github/github-review-cli.ts collect "$PR_NUMBER" "$REVIEW_SHA" "$BASE_SHA"
       - name: Install pinned OpenCode client
         run: npm install --global @opencode/cli@2.0.30
       - name: Bounded OpenCode → Dr Watson → Go review
@@ -55,7 +55,7 @@ jobs:
           LLM_MONTHLY_HARD_LIMIT_USD: "0"
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node_modules/.bin/tsx src/github-review-cli.ts analyze "$PR_NUMBER" "$REVIEW_SHA"
+        run: node_modules/.bin/tsx src/github/github-review-cli.ts analyze "$PR_NUMBER" "$REVIEW_SHA"
       - name: Retain validated result only (no prompt or provider logs)
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,4 +92,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
-        run: node_modules/.bin/tsx src/github-review-cli.ts publish "$PR_NUMBER" "$REVIEW_SHA"
+        run: node_modules/.bin/tsx src/github/github-review-cli.ts publish "$PR_NUMBER" "$REVIEW_SHA"

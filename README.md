@@ -71,7 +71,7 @@ unchanged until you make that manual edit.
 ### Model configuration
 
 The approved catalogue lives in `config/models.json` (versioned and validated by
-the Zod schema in `src/model-catalogue.ts`). It is the single source of truth for
+the Zod schema in `src/providers/model-catalogue.ts`). It is the single source of truth for
 provider identifiers and defaults, provider endpoints, the cheap/standard/hard
 route order, the Ollama local fallback, model pricing, and the long-context and
 scheduled pricing rules. OpenCode Go's free models (ids ending in `-free`) are
@@ -202,7 +202,7 @@ Run `npm run typecheck` and `npm test`. Tests use mocked providers and temporary
 
 ### `npm run check-models`
 
-Fetches the OpenCode Go model catalogue, compares it to the previous snapshot saved in `data/catalogue.db`, and reports any **added**, **removed**, or **changed** models. It also flags newly discovered models that aren't yet in the approved catalogue (`config/models.json`, validated by `src/model-catalogue.ts`) as candidates for review.
+Fetches the OpenCode Go model catalogue, compares it to the previous snapshot saved in `data/catalogue.db`, and reports any **added**, **removed**, or **changed** models. It also flags newly discovered models that aren't yet in the approved catalogue (`config/models.json`, validated by `src/providers/model-catalogue.ts`) as candidates for review.
 
 This is read-only: it never changes routing automatically. Use it weekly (e.g. via `cron` or `launchd` on your Mac) to stay aware of new OpenCode Go models, then decide whether to add one to the approved catalogue and its pricing by hand.
 

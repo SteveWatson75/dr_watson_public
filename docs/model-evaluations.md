@@ -75,7 +75,7 @@ screening traffic, not bulk general-purpose generation.
 
 ### Fixtures and rubric
 
-`src/evaluation-fixtures.ts` contains 16 fixed synthetic inputs and expectations:
+`src/evaluation/evaluation-fixtures.ts` contains 16 fixed synthetic inputs and expectations:
 
 - Cheap (5): technical summary, prioritization, structured JSON, code explanation,
   and a simple tool call.
@@ -165,7 +165,7 @@ workspace privacy, regional settings, billing configuration or Actions changes
 are performed. The runner cannot independently verify the Console toggle.
 
 Production enforces privacy restrictions from this same validated metadata:
-`src/model-policy.ts` shares the schema and UTC expiry check with evaluation
+`src/providers/model-policy.ts` shares the schema and UTC expiry check with evaluation
 eligibility. The shared `productionPrivacyEligibility` predicate rejects known
 training-required, explicitly blocked, or expired Go models. `guardedModel`
 checks the **resolved** model before budget reservation/provider construction,

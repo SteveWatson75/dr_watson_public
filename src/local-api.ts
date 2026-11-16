@@ -5,9 +5,9 @@ import { Usage, type ModelRequest } from "@openai/agents";
 import { z } from "zod";
 import { PROVIDERS, providerApiKey, providerSettings, type TaskTier } from "./config.js";
 import { budgetLedger, type BudgetLedger } from "./budget.js";
-import { guardedModel } from "./provider.js";
-import { modelRoutes, taskTier } from "./provider-chain.js";
-import type { ModelRoute } from "./provider-chain.js";
+import { guardedModel } from "./providers/provider.js";
+import { modelRoutes, taskTier } from "./routing/provider-chain.js";
+import type { ModelRoute } from "./routing/provider-chain.js";
 
 export const LOCAL_MODEL = "dr-watson-auto";
 const fallbackGoSession = `dr-watson-local-${randomUUID()}`;

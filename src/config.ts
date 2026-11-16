@@ -1,7 +1,7 @@
 import "dotenv/config";
-import { modelCatalogue, PROVIDERS, type LlmProvider } from "./model-catalogue.js";
+import { modelCatalogue, PROVIDERS, type LlmProvider } from "./providers/model-catalogue.js";
 
-export { PROVIDERS, type LlmProvider, type TaskTier } from "./model-catalogue.js";
+export { PROVIDERS, type LlmProvider, type TaskTier } from "./providers/model-catalogue.js";
 
 export const providerDefaults: Record<LlmProvider, { model: string; baseUrl: string }> = Object.fromEntries(
   modelCatalogue.providers.map(({ id, defaultModel, baseUrl }) => [id, { model: defaultModel, baseUrl }]),
