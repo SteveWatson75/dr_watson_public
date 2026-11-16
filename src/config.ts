@@ -1,18 +1,11 @@
 import "dotenv/config";
+import { modelCatalogue, PROVIDERS, type LlmProvider } from "./model-catalogue.js";
 
-export const PROVIDERS = ["opencode", "anthropic", "gemini", "ollama", "openrouter", "groq", "openai"] as const;
-export type LlmProvider = (typeof PROVIDERS)[number];
-export type TaskTier = "cheap" | "standard" | "hard";
+export { PROVIDERS, type LlmProvider, type TaskTier } from "./model-catalogue.js";
 
-export const providerDefaults: Record<LlmProvider, { model: string; baseUrl: string }> = {
-  opencode: { model: "deepseek-v4.1-flash", baseUrl: "https://opencode.ai/inference/go/openai/v1" },
-  anthropic: { model: "claude-haiku-5-5", baseUrl: "https://api.anthropic.com/v1/" },
-  gemini: { model: "gemini-3.8-flash", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/" },
-  ollama: { model: "llama3.2:3b", baseUrl: "http://127.0.0.1:11434/v1" },
-  openrouter: { model: "openrouter/free", baseUrl: "https://openrouter.ai/api/v1" },
-  groq: { model: "openai/gpt-oss-120b", baseUrl: "https://api.groq.com/openai/v1" },
-  openai: { model: "gpt-4.1-mini", baseUrl: "https://api.openai.com/v1" },
-};
+export const providerDefaults: Record<LlmProvider, { model: string; baseUrl: string }> = Object.fromEntries(
+  modelCatalogue.providers.map(({ id, defaultModel, baseUrl }) => [id, { model: defaultModel, baseUrl }]),
+) as Record<LlmProvider, { model: string; baseUrl: string }>;
 
 function limit(name: string, fallback: number): number {
   const value = Number(process.env[name] ?? fallback);

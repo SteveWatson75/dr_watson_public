@@ -1,20 +1,9 @@
 import { fetchGoCatalogue, normalizeGoModels, diffCatalogues, type GoModel } from "./opencode-models.js";
 import { CatalogueStore } from "./opencode-catalogue.js";
-import { modelRoutes } from "./provider-chain.js";
+import { approvedOpenCodeModelIds } from "./model-catalogue.js";
 
-// Model ids that Dr Watson already routes through OpenCode Go in one of the
-// task tiers. A discovered model that is not here is a candidate for review,
-// not an automatic routing change.
-function routedGoModelIds(): Set<string> {
-  const ids = new Set<string>();
-  for (const tier of ["cheap", "standard", "hard"] as const) {
-    for (const route of modelRoutes(tier, "auto")) {
-      if (route.provider === "opencode" && route.model) ids.add(route.model);
-    }
-  }
-  return ids;
-}
-
+// Discovery is read-only. A model that is not in the approved catalogue is a
+// candidate for review, never an automatic routing change.
 function isRouted(id: string, routed: Set<string>): boolean {
   return routed.has(id);
 }
@@ -54,7 +43,7 @@ async function run(): Promise<number> {
 
   const diff = previous ? diffCatalogues(previous, models)
     : { added: models, removed: [], changed: [] };
-  const routed = routedGoModelIds();
+  const routed = approvedOpenCodeModelIds();
 
   if (json) {
     console.log(JSON.stringify({
@@ -94,7 +83,7 @@ async function run(): Promise<number> {
   const newCandidates = diff.added.filter((model) => !isRouted(model.id, routed));
   if (newCandidates.length) {
     log(`\n${newCandidates.length} new model(s) not currently routed.`);
-    log("Review them before adding to TIER_ROUTES in src/provider-chain.ts.");
+    log("Review them before adding to the approved catalogue in src/model-catalogue.ts.");
   }
 
   return 0;
