@@ -98,6 +98,10 @@ routed.
 - reports added, removed, and changed models,
 - flags newly discovered models that aren't in the approved catalogue as candidates for review.
 
+Successful checks append snapshots to `model_catalogue_snapshots`. Existing
+databases may retain the legacy `model_catalogue` table and its rows; discovery
+no longer creates or maintains that derived per-model table.
+
 Run it weekly (e.g. `cron` or `launchd` on your Mac). If OpenCode adds a model you
 want Dr Watson to use, add it to the approved catalogue in `config/models.json`
 and, if it carries a non-zero price, its pricing entry there too. The router,

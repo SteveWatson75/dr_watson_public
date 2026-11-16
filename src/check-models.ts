@@ -25,7 +25,7 @@ async function run(): Promise<number> {
   let previous: GoModel[] | undefined;
   try {
     previous = store.getPreviousModels();
-    store.saveSnapshot(models, raw, checkedAt);
+    store.saveSnapshot(raw, checkedAt);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const result = { error: message, checkedAt };
