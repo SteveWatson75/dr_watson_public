@@ -26,7 +26,7 @@ export const evaluationFixturesV2: EvaluationFixture[] = [
   {
     id: "deleted-auth-diff", tier: "standard",
     prompt: lines(
-      "Review this synthetic PR diff. The removed middleware was the only authentication check on this router, and the handler has no ownership check.",
+      "Review this synthetic PR diff. Label definitions: missing-authentication means the only session check was removed; missing-authorization means an authenticated caller can read another tenant's record because no ownership check exists. The removed middleware was the only session check, and the handler has no ownership check.",
       "diff:",
       "- router.use(requireSession);",
       '  router.get("/invoices/:id", async (req, res) => {',
@@ -66,7 +66,7 @@ export const evaluationFixturesV2: EvaluationFixture[] = [
   {
     id: "security-review-deletion", tier: "hard",
     prompt: lines(
-      "Security review of this synthetic PR diff. The removed middleware was the only admin check on the route.",
+      "Security review of this synthetic PR diff. The removed middleware was the only session-authentication check. This route intentionally has no tenant restriction, so missing-authorization is out of scope.",
       "diff:",
       '- app.use("/admin", requireAdmin);',
       '  app.post("/admin/export", async (req, res) => {',

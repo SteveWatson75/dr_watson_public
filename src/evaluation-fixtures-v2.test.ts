@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { evaluationFixtures } from "./evaluation-fixtures.js";
 import { evaluationFixtureSetVersion, evaluationFixturesV2 } from "./evaluation-fixtures-v2.js";
-import { scoreResult, summarize } from "./model-evaluation.js";
+import { scoreResult, summarizeV2 } from "./model-evaluation.js";
 import { candidateCatalogue } from "./model-policy.js";
 
 const candidate = candidateCatalogue.candidates[0]!;
@@ -35,6 +35,16 @@ describe("version 2 fixture set", () => {
     }
   });
 
+  it("disambiguates missing authentication from missing authorization", () => {
+    const auth = evaluationFixturesV2.find((fixture) => fixture.id === "deleted-auth-diff")!;
+    expect(auth.prompt).toContain("missing-authentication means");
+    expect(auth.prompt).toContain("missing-authorization means");
+    expect(auth.expected).toEqual({ findings: ["missing-authentication", "missing-authorization"] });
+    const security = evaluationFixturesV2.find((fixture) => fixture.id === "security-review-deletion")!;
+    expect(security.prompt).toContain("missing-authorization is out of scope");
+    expect((security.expected as { defects: string[] }).defects).not.toContain("missing-authorization");
+  });
+
   it("scores its own expected answers without review flags", () => {
     for (const fixture of evaluationFixturesV2) {
       const tool = Boolean(fixture.tool);
@@ -46,9 +56,10 @@ describe("version 2 fixture set", () => {
         finishReason: tool ? "tool_calls" : "stop",
       };
       expect(scoreResult(fixture, result)).toMatchObject({ correctness: 1, adherence: 1, tool: tool ? 1 : null, review: false });
-      const summary = summarize(candidate, [fixture], [result], 1);
+      const summary = summarizeV2(candidate, [fixture], [result], 1);
       expect(summary.complete).toBe(true);
-      expect(summary.outcomes).toMatchObject({ attempts: 1, responses: 1, usable: 1 });
+      expect(summary.quality.sampleSize).toBe(1);
+      expect(summary.outcomes).toMatchObject({ planned: 1, usable: 1, invalid: 0, timeouts: 0, providerErrors: 0, missing: 0 });
     }
   });
 });

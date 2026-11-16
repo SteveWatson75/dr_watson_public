@@ -6,7 +6,7 @@ import { providerApiKey, providerDefaults } from "./config.js";
 import { fetchGoCatalogue, GO_MODELS_URL, normalizeGoModels, type GoModel } from "./opencode-models.js";
 import { evaluationFixtures } from "./evaluation-fixtures.js";
 import { evaluationFixtureSetVersion, evaluationFixturesV2 } from "./evaluation-fixtures-v2.js";
-import { candidateCatalogue, describeEvaluationError, eligibility, evaluationDiscoverySchema, rankCandidates, summarize, type EvaluationResult } from "./model-evaluation.js";
+import { candidateCatalogue, describeEvaluationError, eligibility, evaluationDiscoverySchema, EVALUATION_SCORING_VERSION, rankCandidates, summarizeV2, type EvaluationResult } from "./model-evaluation.js";
 import { estimateEvaluationPlan, tokenBound } from "./evaluation-plan.js";
 import { buildEvaluationReport } from "./evaluation-report.js";
 import type { TaskTier } from "./model-catalogue.js";
@@ -97,7 +97,7 @@ async function run() {
   let allowanceUsd = 0;
   let totalTokens = 0;
   const manifest = {
-    version: 1, fixtureSet: fixtureVersion, startedAt, tier, repetitions, endpoint: providerDefaults.opencode.baseUrl,
+    version: 1, fixtureSet: fixtureVersion, scoringVersion: EVALUATION_SCORING_VERSION, startedAt, tier, repetitions, endpoint: providerDefaults.opencode.baseUrl,
     environment: { node: process.version, platform: process.platform, arch: process.arch },
     settings: { maxTokens, timeoutMs, retries: 0, maxAllowanceUsd, maxTotalTokens, requests, extraUsageDisabledOwnerConfirmed: true },
     system: SYSTEM_PROMPT,
@@ -106,7 +106,7 @@ async function run() {
   };
   const save = (initial = false) => writeFileSync(values.out!, JSON.stringify({
     ...manifest, savedAt: new Date().toISOString(), allowanceUsd, totalTokens, stopped: [...stopped], results,
-    comparison: rankCandidates(candidates.map((c) => summarize(c, fixtures, results, repetitions))),
+    comparison: rankCandidates(candidates.map((c) => summarizeV2(c, fixtures, results, repetitions))),
   }, null, 2) + "\n", initial ? { flag: "wx" } : undefined);
   save(true);
   // Alternate candidate order to reduce systematic order/caching bias.

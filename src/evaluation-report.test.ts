@@ -15,8 +15,9 @@ describe("historical offline reports", () => {
   it.each(["cheap", "standard", "hard"])("preserves recorded %s scores, costs and ranking using original manifests", (tier) => {
     const report = buildEvaluationReport([read(tier), read(`${tier}-${tier === "cheap" ? "beam" : "deepseek"}`)]);
     const recorded = read("comparison").tiers.find((row: { tier: string }) => row.tier === tier);
-    const select = ({ model, score, allowanceUsd }: { model: string; score: number; allowanceUsd: number }) => ({ model, score, allowanceUsd });
+    const select = ({ model, score, allowanceUsd }: { model: string; score: number | null; allowanceUsd: number }) => ({ model, score, allowanceUsd });
     expect(report.comparison.map(select)).toEqual(recorded.comparison.map(select));
+    expect(report.scoringVersion).toBe(1);
     expect(report.eligibility).toBe("not evaluated; historical snapshots only");
   });
 
@@ -88,6 +89,31 @@ describe("historical offline reports", () => {
     const beam = read("cheap-beam");
     cheap.fixtureSet = 1;
     beam.fixtureSet = 2;
+    expect(() => buildEvaluationReport([cheap, beam])).toThrow("Incompatible");
+  });
+
+  it("uses conditional scoring only when a manifest opts into version 2", () => {
+    const legacy = buildEvaluationReport([read("cheap")]);
+    const manifest = read("cheap");
+    manifest.scoringVersion = 2;
+    const versioned = buildEvaluationReport([manifest]);
+    expect(legacy.scoringVersion).toBe(1);
+    expect(versioned.scoringVersion).toBe(2);
+    const mimo = versioned.comparison.find((row) => row.model === "mimo-v2.6-flash");
+    if (!mimo || !("quality" in mimo)) throw new Error("missing version 2 summary");
+    expect(mimo.quality.sampleSize).toBe(10);
+    expect(mimo.components.correctness).not.toBeNull();
+    expect(mimo.qualifiedForRouting).toBe(true);
+    const glm = versioned.comparison.find((row) => row.model === "glm-5.3-flash");
+    if (!glm || !("quality" in glm)) throw new Error("missing version 2 summary");
+    expect(glm.qualifiedForRouting).toBe(false);
+  });
+
+  it("refuses to combine different scoring versions", () => {
+    const cheap = read("cheap");
+    const beam = read("cheap-beam");
+    cheap.scoringVersion = 1;
+    beam.scoringVersion = 2;
     expect(() => buildEvaluationReport([cheap, beam])).toThrow("Incompatible");
   });
 });

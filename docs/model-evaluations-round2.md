@@ -132,23 +132,41 @@ one function call), so Markdown fences, extra fields, multiple calls and
 malformed JSON still lose adherence/tool credit. The v2 fixtures are new
 inputs, not edits to v1, and will produce a new fixture hash and new evidence.
 
-## 5. Reporting changes
+## 5. Reporting changes (versioned)
 
-`summarize` now reports **availability**, **reliability** and **outcomes**
-alongside the existing accuracy/correctness, tool-call, adherence, latency,
-efficiency components and estimated allowance:
+New runs record `scoringVersion: 2` in the manifest. Historical manifests have
+no `scoringVersion` and continue to use version 1 semantics, so every checked-in
+`docs/evaluations/*.json` score, cost and ranking still reproduces exactly.
+Mixing scoring versions or fixture sets in one report is rejected.
 
-- availability: responses received / planned observations;
-- reliability: responses with a normal `stop`/`tool_calls` finish / planned
-  observations;
-- outcomes: attempts, responses, usable responses, errors, timeouts, missing;
-- accuracy remains the exact-field correctness component;
-- cost remains the estimated allowance at reviewed uncached prices.
+Version 2 separates evidence quality from availability:
 
-A timeout or transport failure is recorded as `timeout` or an HTTP/transport
-label, never as a reasoning failure. The combined-report builder rejects
-different `fixtureSet` versions in addition to different fixture hashes,
-tiers, repetitions, endpoints, system prompts and request settings.
+- **Conditional quality:** correctness, adherence, tool reliability, latency and
+  efficiency are averaged only over **usable completed responses**. A usable
+  response is a normal `stop`/`tool_calls` completion with no transport error and
+  valid JSON/expected shape; a wrong but well-formed answer is still quality
+  evidence and is scored as such.
+- **Sample size:** `quality.sampleSize` is always reported next to the
+  conditional metrics, including `0` when every observation failed. With no
+  usable response the metrics and `score` are `null`, never zero.
+- **Availability:** `(usable + invalid) / planned`; the HTTP response arrived
+  and completed, even if its content was malformed or truncated.
+- **Completion:** `usable / planned`; the evidence count used for quality.
+- **Outcome counts against all planned observations:** usable, invalid/truncated
+  (including `length` finishes and invalid JSON), timeouts, HTTP/provider errors
+  (including transport failures), and missing observations.
+- **Qualification:** `qualifiedForRouting` is true only when every planned
+  observation is usable, usage is reported, and tool/API compatibility is
+  observed. It confirms complete evidence, not accepted quality: review flags
+  and scores still require human judgment, and reports never change routing.
+  Incomplete or null-score rows sort after qualified rows; a null score always
+  sorts last.
+- **Review:** incomplete evidence always sets `review: true`, even if every
+  received answer was correct.
+
+A timeout or transport failure is recorded as availability evidence, never as a
+reasoning failure. Historical version 1 reports are untouched and their legacy
+zero-averaging semantics are not used for new evidence.
 
 ## 6. Bounded live plan
 
