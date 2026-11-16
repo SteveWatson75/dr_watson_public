@@ -78,7 +78,7 @@ async function run(): Promise<number> {
   const newCandidates = diff.added.filter((model) => !routed.has(model.id));
   if (newCandidates.length) {
     log(`\n${newCandidates.length} new model(s) not currently routed.`);
-    log("Review them before adding to the approved catalogue in src/providers/model-catalogue.ts.");
+    log("Review them before adding to the approved catalogue in config/models.json.");
   }
 
   return 0;
