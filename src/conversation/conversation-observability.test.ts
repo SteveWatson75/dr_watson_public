@@ -73,12 +73,21 @@ beforeEach(() => {
       (model = guardedModel(routes, ledger, factory, warn, history, undefined, report)),
   );
   vi.mocked(run).mockImplementation((async () => {
+    // The plan must exist before any invocation, without inventing usage.
+    const planned = tableRows(raw, "routing_decisions");
+    expect(planned).toEqual([
+      expect.objectContaining({ provider: routes[0]!.provider, route: "planned" }),
+    ]);
+    const sessionId = planned[0]!.session_id;
+    expect(tableRows(raw, "agent_runs").filter((row) => row.session_id === sessionId)).toEqual([]);
+    expect(tableRows(raw, "model_usage").filter((row) => row.session_id === sessionId)).toEqual([]);
     await model!.getResponse(modelRequest);
     return { finalOutput: "Done", state: { usage: { requests: 1, inputTokens: 10, outputTokens: 5, totalTokens: 15 } } };
   }) as never);
 });
 
 afterEach(() => {
+  expect(tableRows(raw, "routing_decisions").every((row) => row.route === "planned")).toBe(true);
   raw.close();
   memory.close();
   ledger.close();
@@ -113,7 +122,6 @@ describe("conversation model-usage observability", () => {
       ["user", "Summarize the findings"], ["assistant", "Done"],
     ]);
     expect(tableRows(raw, "routing_decisions")).toEqual([
-      expect.objectContaining({ provider: "baseline", route: "general" }),
       expect.objectContaining({ provider: "opencode", route: "planned" }),
     ]);
     expect(tableRows(raw, "model_usage")).toHaveLength(1);
@@ -122,7 +130,7 @@ describe("conversation model-usage observability", () => {
   it("attributes a successful run to the primary model that served it", async () => {
     const { sessionId } = await ask();
 
-    const planned = tableRows(raw, "routing_decisions").filter((row) => row.route === "planned");
+    const planned = tableRows(raw, "routing_decisions");
     expect(planned).toEqual([expect.objectContaining({ session_id: sessionId, provider: "opencode", model: "mimo-v2.6-flash", model_tier: "standard" })]);
 
     const runs = tableRows(raw, "agent_runs");

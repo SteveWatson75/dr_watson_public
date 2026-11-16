@@ -5,35 +5,6 @@ import { createRoutedModel, type ModelUsageRecord } from "../providers/provider.
 import { taskTier, modelRoutes } from "../routing/provider-chain.js";
 import { MemoryStore } from "./memory.js";
 import { loadCeoContext } from "./context.js";
-import { BaselineShadowRouter } from "../routing/baseline.js";
-import type { ShadowRouter } from "../routing/types.js";
-
-const shadowRouters: ShadowRouter[] = [
-  new BaselineShadowRouter(),
-];
-
-async function recordShadowRoutes(
-  memory: MemoryStore,
-  sessionId: number,
-  message: string,
-): Promise<void> {
-  const decisions = await Promise.allSettled(
-    shadowRouters.map((router) => router.decide(message)),
-  );
-
-  for (const result of decisions) {
-    if (result.status !== "fulfilled" || !result.value) continue;
-    const decision = result.value;
-    memory.addRoutingDecision({
-      sessionId,
-      provider: decision.provider,
-      model: decision.model,
-      route: decision.route,
-      modelTier: decision.modelTier,
-      durationMs: decision.durationMs,
-    });
-  }
-}
 
 // Models that actually produced a response during the run, in first-use order.
 // A fallback run is attributed to the fallback, not the planned primary; a run
@@ -62,8 +33,6 @@ export async function runConversation(
     .map((item) => `${item.role.toUpperCase()}: ${item.content}`);
 
   memory.addMessage(sessionId, "user", message);
-
-  await recordShadowRoutes(memory, sessionId, message);
 
   const renderPrompt = (history: string[]) => [
     ...(ceoContext ? ["CEO CONTEXT", ceoContext, ""] : []),
