@@ -26,6 +26,15 @@ Suspected, not proven: growing raw-data context contributed to provider delays; 
 Go failure caused that run's fallthrough. Separate evaluation evidence records a DeepSeek
 V4 Pro timeout, but does not prove the same failure caused every review timeout.
 
+- [Run 43890950771](https://github.com/SteveWatson75/dr_watson_public/actions/runs/43890950771)
+  (PR #11) correctly failed closed as **Incomplete** but selected evidence poorly: the
+  old alphabetical non-Markdown sort supplied `src/ceo-context.test.ts` and part of
+  `src/conversation-observability.test.ts` before the production files
+  `src/provider.ts`, `src/conversation.ts`, `src/memory.ts` and `src/stats.ts`, and the
+  20,000-byte budget expired first. Deterministic priority selection and two-pass
+  allocation (below) fix the ordering; the fail-closed **Incomplete** behavior is
+  unchanged.
+
 ## Input and execution
 
 `agent-review.yml` runs trusted **main/base** code via `pull_request_target`; it never checks
@@ -37,12 +46,43 @@ at the reviewed SHA; CI is not executed or treated as an approval gate here.
 
 `github-review.ts` prepares PR title/body, statuses, rename paths and available diff hunks:
 
-- Source/config/tests precede optional Markdown; total prepared evidence **20,000 UTF-8 bytes**,
-  per-file **16,000 bytes**, Markdown **4,000 bytes**. Title/body/CI are capped at
+- Evidence is selected in deterministic priority order so production changes reach the
+  model before optional material (ties break by path):
+  **0 — security-sensitive configuration and guardrails**: `.github/`, `.opencode/`,
+  `opencode.json(c)`, `AGENTS.md`, `CODEOWNERS`, `config/`, `src/github-review*`,
+  `src/model-policy*`, `src/provider*`, `src/local-api*`, and any file named for
+  auth/authorization/permission/privacy/secret/credential/security/guardrail/policy,
+  including security-policy documents.
+  **1 — production implementation and runtime configuration**: all remaining source,
+  scripts and config (`package.json`, Dockerfiles, unrecognized extensions). Unknown
+  file types are required content that fails closed, never silently ignored.
+  **2 — tests and fixtures**: `*.test.*`, `*.spec.*`, `test(s)/`, `__tests__/`, `e2e/`,
+  fixture-named files and directories.
+  **3 — documentation and prose**: `*.md`/`*.mdx`, README/LICENSE/CHANGELOG/
+  CONTRIBUTING, `docs/**` (security-policy documents remain priority 0).
+  Priority only allocates the fixed budget; it is not a trust decision. Untrusted PR
+  text and filenames cannot create coverage: human-inspection flags, line validation
+  and fail-closed verdict rules are unchanged.
+- Allocation is two-pass within the unchanged limits. Pass 1 gives every changed
+  priority 0/1 file a bounded share (remaining bytes divided across the files not yet
+  served, capped by the per-file limit) so one early large file cannot consume the
+  whole budget before required changes are seen. Pass 2 spends what remains on further
+  implementation hunks, then tests, then documentation. Total prepared evidence
+  **20,000 UTF-8 bytes**, per-file **16,000 bytes**, Markdown **4,000 bytes**. Title/body/CI are capped at
   1,000/4,000/2,000 characters. Within the advertised **32,768-token context**, reserve **8,192
   output tokens**, leaving a **24,576-token input budget**. Conservatively bound input using
   evidence UTF-8 bytes plus policy bytes and 2,048 envelope tokens, checked before invocation.
   No average-tokenization or “characters / 4” assumption.
+- Partial coverage is explicit. The manifest records only the line references actually
+  supplied, and every file cut short by the budget or its per-file limit gets a
+  `context budget: remaining hunks omitted (<priority class>)` entry. A file with
+  omitted hunks is never described as fully inspected; any omitted non-Markdown hunk
+  marks coverage partial and forbids **Approved**. When the budget cannot cover all
+  required implementation changes the review returns **Incomplete**; a validated
+  blocking finding over supplied hunks remains a valid narrower verdict. Omitted
+  entries name exactly what a human must inspect directly in the PR diff before
+  relying on the review. Exclusions and omitted-hunk markers are never dropped to
+  improve a result.
 - Exclude raw `docs/evaluations/*.json` and benchmark/observation JSON, generated/minified/build
   content, observation/snapshot data, oversized non-config JSON, `.env`/credential/key files and lockfiles. Binary/unavailable patches cannot be
   inspected. Exclusions and omitted hunks are listed with reasons; nothing is deleted.
@@ -95,7 +135,8 @@ If a comment would exceed 60 KB, publish Incomplete with an explicitly abbreviat
 the full filename/reason inventory remains in the job summary and result artifact.
 
 Every publication is a GitHub **COMMENT**, tied to the inspected commit, not an actual GitHub
-approval. Incomplete is published where possible and makes the publish job fail. Blocking findings
+approval. Incomplete is a valid, honest result: it records that the bounded evidence was
+insufficient instead of guessing, and it never implies the PR is safe. Incomplete is published where possible and makes the publish job fail. Blocking findings
 can be a successfully completed review without approving the PR. Analysis/job execution success,
 model invocation success, review completion and review approval are separate facts.
 Repository settings must permit `GITHUB_TOKEN` review publication; failures never fall back to a PAT.
@@ -143,8 +184,11 @@ then try a data-heavy PR and verify exclusions. The draft cannot safely exercise
 `pull_request_target` policy before it reaches trusted main. Do not merge just to test it.
 Manually verify Go Extra Usage remains off and repository token-review settings.
 
-Known limits: diff-only review lacks unchanged-file context; GitHub patch truncation and large
-source changes produce partial coverage; redaction is heuristic; optional CI snapshots can be
+Known limits: this remains a bounded, diff-based, advisory review, not a comprehensive
+code review. Diff-only review lacks unchanged-file context; GitHub patch truncation and
+large source changes produce partial coverage; under the fixed budget large
+test/documentation patches are truncated or entirely omitted even when production
+evidence is complete; redaction is heuristic; optional CI snapshots can be
 incomplete. Model quality/injection resistance is not guaranteed. Runner/API/installation failures
 can prevent even Incomplete publication. Human review and CI remain mandatory independent gates.
 See [SECURITY.md](../../SECURITY.md#github-pr-review-trust-boundaries).
