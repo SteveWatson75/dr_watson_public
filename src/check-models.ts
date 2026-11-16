@@ -1,6 +1,6 @@
-import { fetchGoCatalogue, normalizeGoModels, diffCatalogues, type GoModel } from "./opencode-models.js";
-import { CatalogueStore } from "./opencode-catalogue.js";
-import { approvedOpenCodeModelIds } from "./model-catalogue.js";
+import { fetchGoCatalogue, normalizeGoModels, diffCatalogues, type GoModel } from "./providers/opencode-models.js";
+import { CatalogueStore } from "./providers/opencode-catalogue.js";
+import { approvedOpenCodeModelIds } from "./providers/model-catalogue.js";
 
 // Discovery is read-only. A model that is not in the approved catalogue is a
 // candidate for review, never an automatic routing change.
@@ -83,7 +83,7 @@ async function run(): Promise<number> {
   const newCandidates = diff.added.filter((model) => !isRouted(model.id, routed));
   if (newCandidates.length) {
     log(`\n${newCandidates.length} new model(s) not currently routed.`);
-    log("Review them before adding to the approved catalogue in src/model-catalogue.ts.");
+    log("Review them before adding to the approved catalogue in src/providers/model-catalogue.ts.");
   }
 
   return 0;

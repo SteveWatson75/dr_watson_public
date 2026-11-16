@@ -1,6 +1,6 @@
 import { Agent } from "@openai/agents";
 import { config } from "../config.js";
-import type { ProviderModel } from "../provider.js";
+import type { ProviderModel } from "../providers/provider.js";
 
 export function createCoder(
   model: string | ProviderModel | undefined = config.model,

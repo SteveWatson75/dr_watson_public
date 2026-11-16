@@ -2,9 +2,9 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { config } from "./config.js";
-import { MODEL_PRICING, modelCatalogue } from "./model-catalogue.js";
+import { MODEL_PRICING, modelCatalogue } from "./providers/model-catalogue.js";
 
-export { MODEL_PRICING } from "./model-catalogue.js";
+export { MODEL_PRICING } from "./providers/model-catalogue.js";
 
 export function estimatedCost(provider: string, model: string, input: number, output: number, date = new Date()): number | undefined {
   if (provider === "ollama") return 0;

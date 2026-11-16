@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { withTrace, setTracingDisabled, Usage, type Model, type ModelRequest } from "@openai/agents";
 import { BudgetLedger, estimatedCost, formatBudget } from "./budget.js";
-import { guardedModel } from "./provider.js";
-import { modelRoutes } from "./provider-chain.js";
+import { guardedModel } from "./providers/provider.js";
+import { modelRoutes } from "./routing/provider-chain.js";
 
 setTracingDisabled(true);
 

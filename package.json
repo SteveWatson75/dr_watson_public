@@ -6,7 +6,7 @@
   "scripts": {
     "serve": "tsx src/serve.ts",
     "check-models": "tsx src/check-models.ts",
-    "evaluate-models": "tsx src/evaluate-models.ts",
+    "evaluate-models": "tsx src/evaluation/evaluate-models.ts",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
