@@ -5,10 +5,10 @@ const project = JSON.parse(readFileSync(new URL("../opencode.json", import.meta.
 const compaction = project.compaction ?? {};
 
 describe("OpenCode routed-model context budget", () => {
-  it("advertises the smallest Go free window and reserves only the output budget before compaction", () => {
+  it("preserves the reviewed virtual window and reserves only the output budget before compaction", () => {
     const { context, output } = project.providers["dr-watson"].models["dr-watson-auto"].limit;
-    // Match the smallest OpenCode Go free route (iceman-contributor-free) rather
-    // than inflating the window beyond what every route can serve.
+    // Preserve the reviewed virtual-model window; this is not a guarantee that
+    // every fallback (particularly Ollama) supports this much context.
     expect(context).toBe(262144);
     expect(output).toBe(8192);
     // An explicit percentage bypasses OpenCode's default 16k buffer floor and

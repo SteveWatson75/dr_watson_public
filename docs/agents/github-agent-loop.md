@@ -1,9 +1,9 @@
 # GitHub agent loop
 
-**PR review configuration:** [bounded reviewer operations](github-review.md) and
-[security boundaries](../../SECURITY.md#github-pr-review-trust-boundaries) supersede the legacy
-review setup below. The PAT, starter action, V1 client, and generic routing described here
-apply only to the unchanged implementation/owner-comment workflows, not the new reviewer.
+This guide covers implementation and owner-comment workflows. The reviewer has
+separate [bounded operations](github-review.md) and
+[security boundaries](../../SECURITY.md#github-pr-review-trust-boundaries);
+it does not use their PAT, starter action, V1 client or generic routing.
 
 This repository uses GitHub Issues and pull requests as the durable workflow state. GitHub Actions
 is the event router; OpenCode runs as a bounded worker. The agent never merges its own pull request.
@@ -27,9 +27,6 @@ is the event router; OpenCode runs as a bounded worker. The agent never merges i
 5. A human checks the diff, CI, agent review, and manual-QA checklist, then merges. QA failures go
    back into the issue as new acceptance criteria or a new linked issue.
 
-For large changes, use a human planning pass to turn the idea into a spec and dependency-linked
-issues before labeling individual slices. Keep one issue small enough for a fresh agent context.
-
 ## One-time setup
 
 1. Create a **fine-grained personal access token** for this repository
@@ -42,44 +39,33 @@ issues before labeling individual slices. Keep one issue small enough for a fres
    access it.
 2. Add an Actions repository secret named `OPENCODE_API_KEY` containing the API key for your
    existing OpenCode Go subscription. Never commit either key or copy them into workflow YAML.
-3. In the OpenCode Console, turn **Use balance** off so reaching the Go model allowance blocks
-   requests instead of falling back to paid balance.
-4. In GitHub billing, keep Actions overage blocked (no payment method, or an Actions budget with a
-   hard stop). Standard Ubuntu minutes for private repositories draw from the account's included
-   monthly allowance; do not use larger runners. Add `agent:implement` to Issues labels if it is not
-   already present.
+3. The owner must confirm the [billing and authorization safeguards](../../SECURITY.md#local-operation-and-owner-authorization):
+   Go **Use balance / Extra Usage off**, Actions overage hard-stopped, standard Ubuntu runners.
+   Add `agent:implement` to Issues labels if it is not already present.
 
 ## Spend and safety limits
 
-- Only explicit owner actions start an agent. There are no schedules or automatic runs on every
-  issue edit.
+- Only explicit owner labels/comments start implementation or comment workers.
+  The separate reviewer runs automatically for eligible non-draft owner PR events.
 - Jobs use standard Ubuntu runners, have timeouts, and serialize runs per issue/PR. The reviewer
   cancels stale runs when a newer commit arrives.
-- Workflows route through Dr Watson (`dr-watson/dr-watson-auto`) on `http://127.0.0.1:8787/v1`. A
-  `start-dr-watson` composite action starts `npm run serve` with `LLM_PROVIDER=auto` and
-  `LLM_MONTHLY_SOFT_LIMIT_USD=0` / `LLM_MONTHLY_HARD_LIMIT_USD=0`, so paid routes are blocked. The
-  pinned OpenCode V1 provider is injected through `OPENCODE_CONFIG_CONTENT` (see
-  [README](../../README.md#opencode-local-backend)).
-- The reviewer has a 60-second upstream request timeout, two maximum provider attempts, a
-  150-second OpenCode deadline, and a separate publication job; Incomplete fails publication.
-- OpenCode Go usage is included in the existing subscription. In the OpenCode Console, keep **Use
-  balance** off so hitting the Go allowance blocks the run instead of falling back to paid balance.
-- When the paid Go models reach their rolling 5-hour or weekly allowance, OpenCode Go falls back to
-  its free models (`beam-free`, then `crouton-alpha-free`, then `iceman-contributor-free`; cheap tier leads with `crouton-alpha-free`). They carry no monthly limit and
-  keep a run progressing at $0 while the subscription allowance recovers.
+- Paid reservations are blocked by zero-dollar workflow limits; zero-priced hosted
+  routes remain possible. Availability, quota and privacy restrictions can still
+  stop a run. Exact approved fallback order is in
+  [`config/models.json`](../../config/models.json), not an independent workflow list.
 - Agent PRs are drafts; CI, fresh-context review, QA, and merge approval remain separate gates.
-- The review workflow only checks same-repository PRs opened by the repository owner; fork PRs are
-  excluded.
 
 ## Dr Watson routing (bounded)
 
-The agent workflows route through `dr-watson/dr-watson-auto`, backed by the local API behavior:
+The implementation/comment workflows route through `dr-watson/dr-watson-auto`:
 
-- Each job starts the router with `.github/actions/start-dr-watson` and sets
+- Each job starts the loopback API with
+  [`.github/actions/start-dr-watson`](../../.github/actions/start-dr-watson/action.yml).
+  It uses `LLM_PROVIDER=auto` and zero cash limits. The worker sets
   `model: dr-watson/dr-watson-auto`. The pinned OpenCode V1 CLI needs the custom provider injected
   through `OPENCODE_CONFIG_CONTENT`; without it OpenCode reports `Model not found:
   dr-watson/dr-watson-auto`.
-- Review and owner-comment jobs opt into the bounded GitHub Actions mode described in the
+- Owner-comment jobs opt into the bounded GitHub Actions mode described in the
   [README](../../README.md#bounded-github-actions-mode), which suppresses coding-session anchoring
   so the agent does not loop on open-ended research. Implementation jobs keep the normal anchoring.
 - `OPENCODE_API_KEY` belongs only on the local API step, never in the OpenCode action environment.
