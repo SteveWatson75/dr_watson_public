@@ -2,12 +2,7 @@ import { fetchGoCatalogue, normalizeGoModels, diffCatalogues, type GoModel } fro
 import { CatalogueStore } from "./providers/opencode-catalogue.js";
 import { approvedOpenCodeModelIds } from "./providers/model-catalogue.js";
 
-// Discovery is read-only. A model that is not in the approved catalogue is a
-// candidate for review, never an automatic routing change.
-function isRouted(id: string, routed: Set<string>): boolean {
-  return routed.has(id);
-}
-
+// Discovery reports candidates for human review; it never changes routing.
 async function run(): Promise<number> {
   const json = process.argv.includes("--json");
   const log = json ? () => undefined : (message: string) => console.log(message);
@@ -52,7 +47,7 @@ async function run(): Promise<number> {
       added: diff.added.map((model) => model.id),
       removed: diff.removed.map((model) => model.id),
       changed: diff.changed,
-      candidates: diff.added.filter((model) => !isRouted(model.id, routed)).map((model) => model.id),
+      candidates: diff.added.filter((model) => !routed.has(model.id)).map((model) => model.id),
     }, null, 2));
     return 0;
   }
@@ -63,7 +58,7 @@ async function run(): Promise<number> {
   if (diff.added.length) {
     log("\nNEW");
     for (const model of diff.added) {
-      log(`  ${model.id}${isRouted(model.id, routed) ? "" : "   (not routed — candidate for review)"}`);
+      log(`  ${model.id}${routed.has(model.id) ? "" : "   (not routed — candidate for review)"}`);
     }
   }
   if (diff.removed.length) {
@@ -80,7 +75,7 @@ async function run(): Promise<number> {
     log("\nNo changes since the last check.");
   }
 
-  const newCandidates = diff.added.filter((model) => !isRouted(model.id, routed));
+  const newCandidates = diff.added.filter((model) => !routed.has(model.id));
   if (newCandidates.length) {
     log(`\n${newCandidates.length} new model(s) not currently routed.`);
     log("Review them before adding to the approved catalogue in src/providers/model-catalogue.ts.");
