@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { candidateCatalogue } from "./model-policy.js";
 import { modelRoutes, taskTier } from "./provider-chain.js";
 
 describe("task routing", () => {
   it.each([
     ["Summarize these notes", "cheap", "opencode", "mimo-v2.6-flash"],
     ["Make a small code edit", "cheap", "opencode", "mimo-v2.6-flash"],
-    ["Implement issue #19 across the repo", "standard", "opencode", "deepseek-v4.1-flash"],
-    ["Debug this implementation", "standard", "opencode", "deepseek-v4.1-flash"],
-    ["Investigate this difficult debugging race condition", "hard", "opencode", "deepseek-v4-pro"],
-    ["Review the architecture", "hard", "opencode", "deepseek-v4-pro"],
-    ["Review this pull request in a fresh context", "hard", "opencode", "deepseek-v4-pro"],
-    ["Review these changes for security issues", "hard", "opencode", "deepseek-v4-pro"],
+    ["Implement issue #19 across the repo", "standard", "opencode", "mimo-v2.6-pro"],
+    ["Debug this implementation", "standard", "opencode", "mimo-v2.6-pro"],
+    ["Investigate this difficult debugging race condition", "hard", "opencode", "qwen4-max"],
+    ["Review the architecture", "hard", "opencode", "qwen4-max"],
+    ["Review this pull request in a fresh context", "hard", "opencode", "qwen4-max"],
+    ["Review these changes for security issues", "hard", "opencode", "qwen4-max"],
   ] as const)("routes %s", (message, tier, provider, model) => {
     expect(taskTier(message)).toBe(tier);
     expect(modelRoutes(tier, "auto")[0]).toEqual({ provider, model });
@@ -21,10 +22,23 @@ describe("task routing", () => {
     expect(taskTier("Compaction summary: consolidate the conversation into the required template.")).toBe("standard");
   });
 
-  it("keeps equivalent Go backups before external fallbacks", () => {
-    expect(modelRoutes("standard", "auto")).toEqual([
+  it("keeps the evaluated cheap route order", () => {
+    expect(modelRoutes("cheap", "auto")).toEqual([
+      { provider: "opencode", model: "mimo-v2.6-flash" },
+      { provider: "opencode", model: "glm-5.3-flash" },
       { provider: "opencode", model: "deepseek-v4.1-flash" },
+      { provider: "opencode", model: "beam-free" },
+      { provider: "openrouter", model: "openrouter/free" },
+      { provider: "anthropic", model: "claude-haiku-5-5" },
+      { provider: "gemini", model: "gemini-3.8-flash" },
+      { provider: "ollama" },
+    ]);
+  });
+
+  it("promotes MiMo V2.6 Pro ahead of DeepSeek Flash on the standard route", () => {
+    expect(modelRoutes("standard", "auto")).toEqual([
       { provider: "opencode", model: "mimo-v2.6-pro" },
+      { provider: "opencode", model: "deepseek-v4.1-flash" },
       { provider: "opencode", model: "kimi-k2.7-code" },
       { provider: "opencode", model: "beam-free" },
       { provider: "openrouter", model: "openrouter/free" },
@@ -32,11 +46,50 @@ describe("task routing", () => {
       { provider: "anthropic", model: "claude-sonnet-5-5" },
       { provider: "ollama" },
     ]);
-    expect(modelRoutes("hard", "auto").slice(0, 3)).toEqual([
+  });
+
+  it("leads the hard route with the evaluated Qwen4 Max, Kimi K3.1 Pro and MiMo pair", () => {
+    expect(modelRoutes("hard", "auto")).toEqual([
+      { provider: "opencode", model: "qwen4-max" },
+      { provider: "opencode", model: "kimi-k3.1-pro" },
+      { provider: "opencode", model: "mimo-v2.6-pro" },
       { provider: "opencode", model: "deepseek-v4-pro" },
       { provider: "opencode", model: "qwen3.8-max" },
       { provider: "opencode", model: "kimi-k2.7-code" },
+      { provider: "opencode", model: "beam-free" },
+      { provider: "openrouter", model: "openrouter/free" },
+      { provider: "gemini", model: "gemini-3.8-flash" },
+      { provider: "anthropic", model: "claude-sonnet-5-5" },
+      { provider: "ollama" },
     ]);
+  });
+
+  it("keeps provider/model pairs unique within each tier and Ollama last", () => {
+    for (const tier of ["cheap", "standard", "hard"] as const) {
+      const routes = modelRoutes(tier, "auto");
+      const keys = routes.map((route) => `${route.provider}:${route.model ?? ""}`);
+      expect(new Set(keys).size).toBe(keys.length);
+      expect(routes.at(-1)).toEqual({ provider: "ollama" });
+    }
+  });
+
+  it("derives routes only from the approved catalogue, never from evaluation scores", () => {
+    const before = (["cheap", "standard", "hard"] as const).map((tier) => modelRoutes(tier, "auto"));
+    const candidate = candidateCatalogue.candidates.find((entry) => entry.id === "qwen4-max")!;
+    const original = { ...candidate };
+    try {
+      // Even a dramatic change to reviewed evaluation metadata (prices,
+      // allowances, ranking) must not move a production route.
+      candidate.input = 99;
+      candidate.output = 99;
+      candidateCatalogue.candidates.reverse();
+      for (const [index, tier] of (["cheap", "standard", "hard"] as const).entries()) {
+        expect(modelRoutes(tier, "auto")).toEqual(before[index]);
+      }
+    } finally {
+      Object.assign(candidate, original);
+      candidateCatalogue.candidates.reverse();
+    }
   });
 
   it("falls back to the free Go models before leaving the provider", () => {
@@ -55,12 +108,12 @@ describe("task routing", () => {
     }
     // The remaining free route is Beam; it is not an accessibility guarantee.
     expect(modelRoutes("cheap", "auto")[3]).toEqual({ provider: "opencode", model: "beam-free" });
-    expect(modelRoutes("hard", "auto")[3]).toEqual({ provider: "opencode", model: "beam-free" });
+    expect(modelRoutes("hard", "auto")[6]).toEqual({ provider: "opencode", model: "beam-free" });
   });
 
   it("honors provider overrides and keeps local fallback", () => {
     expect(modelRoutes("hard", "anthropic")[0]).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
-    expect(modelRoutes("hard", "opencode")[0]).toEqual({ provider: "opencode", model: "deepseek-v4-pro" });
+    expect(modelRoutes("hard", "opencode")[0]).toEqual({ provider: "opencode", model: "qwen4-max" });
     expect(modelRoutes("hard", "ollama")).toEqual([{ provider: "ollama" }]);
     expect(modelRoutes("cheap", "openai")).toEqual([{ provider: "openai" }, { provider: "ollama" }]);
   });

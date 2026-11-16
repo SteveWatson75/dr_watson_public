@@ -19,12 +19,18 @@ Automatic selection uses simple local task rules:
 | Tier | OpenCode Go models (fallback order) | Work |
 | --- | --- | --- |
 | `cheap` (default) | `mimo-v2.6-flash` → `glm-5.3-flash` → `deepseek-v4.1-flash` → `beam-free` | Routine questions, summaries, classification, issue drafting, small edits, simple tests |
-| `standard` | `deepseek-v4.1-flash` → `mimo-v2.6-pro` → `kimi-k2.7-code` → `beam-free` | Implementation, multi-file changes, repo analysis, debugging, long coding tasks |
-| `hard` | `deepseek-v4-pro` → `qwen3.8-max` → `kimi-k2.7-code` → `beam-free` | Architecture, difficult debugging, code/PR review |
+| `standard` | `mimo-v2.6-pro` → `deepseek-v4.1-flash` → `kimi-k2.7-code` → `beam-free` | Implementation, multi-file changes, repo analysis, debugging, long coding tasks |
+| `hard` | `qwen4-max` → `kimi-k3.1-pro` → `mimo-v2.6-pro` → `deepseek-v4-pro` → `qwen3.8-max` → `kimi-k2.7-code` → `beam-free` | Architecture, difficult debugging, code/PR review |
 
 Use `/tier cheap`, `/tier standard`, `/tier hard`, or `/tier auto` to control the tier for subsequent prompts. On provider failure, automatic routing tries the remaining Go models in the selected tier, then other configured providers, and finally Ollama. Missing keys are skipped. Errors unrelated to provider availability stop the run. Code-review requests route to `hard` automatically.
 
-`beam-free` is tried before external providers, but its temporary free offer and regional restrictions mean availability is not guaranteed. Crouton was removed because it is absent from current discovery; Iceman Contributor was removed because its terms require using request data to improve the model. The owner confirmed Go Global-region settings are enabled (2026-11-16), satisfying DeepSeek's regional prerequisite; its current ZDR agreement runs through 2026-11-30 and requires renewal. Production skips expired dated privacy approvals on each request, including explicit overrides, then follows the remaining configured fallback order. This project never changes privacy settings automatically. Existing primaries are retained provisionally, not re-certified by the small evaluation sample.
+`beam-free` is tried before external providers, but its temporary free offer and regional restrictions mean availability is not guaranteed. Crouton was removed because it is absent from current discovery; Iceman Contributor was removed because its terms require using request data to improve the model. The owner confirmed Go Global-region settings are enabled (2026-11-16), satisfying DeepSeek's regional prerequisite; its current ZDR agreement runs through 2026-11-30 and requires renewal. Production skips expired dated privacy approvals on each request, including explicit overrides, then follows the remaining configured fallback order. This project never changes privacy settings automatically.
+
+### Round 2 route selection
+
+The order above applies the reviewed [Round 2 results](docs/model-evaluations-round2-results.md) (executed 2026-11-16; 137 requests, $0.153 estimated Go allowance): `standard` promotes `mimo-v2.6-pro` (8/8 exact answers, 2/2 tool calls, $0.001282 allowance, zero retention) and keeps `deepseek-v4.1-flash` as its fallback; `hard` leads with `qwen4-max`, `kimi-k3.1-pro` and `mimo-v2.6-pro` (8/8 usable and 2/2 tool calls each; `qwen4-max` consumed about one third of `kimi-k3.1-pro`'s allowance, and `mimo-v2.6-pro` is the economical alternate at $0.001409), while `deepseek-v4-pro`, `qwen3.8-max` and `kimi-k2.7-code` are retained as recovery paths. `cheap` is unchanged because all five screened candidates tied on correctness. This was a screening sample of two repetitions over three or four fixtures per tier: it shows the candidates handled the synthetic tasks reliably, not that any model is statistically superior.
+
+Routing stays deterministic on purpose: fixed local task rules and the reviewed catalogue in `config/models.json`, with no LLM-based model selector. Evaluation reports and model discovery never change a route automatically; routes change only through a reviewed edit to `config/models.json`. The free models (`beam-free`, and unscreened `hy4-flash-free` / `longcat-2.5-free`) led the cost-aware ranking but are temporary offers with retention or regional terms, so they are not promoted to privacy defaults; `beam-free` stays the zero-cost emergency fallback before external providers.
 
 See [model evaluations](docs/model-evaluations.md) for the dated privacy review, 16 synthetic fixtures, bounded CLI runner, raw comparisons and limitations. `npm run evaluate-models -- --list --tier cheap` makes no API calls.
 
@@ -79,8 +85,8 @@ are outside this catalogue and are priced via `LLM_INPUT_USD_PER_MILLION` /
 `config/legacy-models.json` is a frozen historical test fixture representing the
 configuration before it was externalized. It is never loaded by production code
 and never derived from `config/models.json`; it exists only to give tests an
-independent regression expectation for route order, provider defaults and
-pricing.
+independent baseline for route order, provider defaults and pricing, on top of
+which the tests assert the documented Round 2 route changes.
 
 Model discovery (`npm run check-models`) is read-only. Approving a new model is a
 manual, reviewed edit: add it to `config/models.json`, keep its identity and
@@ -96,6 +102,8 @@ Default monthly limits are a **$15 soft warning** and a **$20 hard cap**, leavin
 Each model request, including specialist and memory calls, reserves a conservative estimate before sending: serialized input bytes plus overhead, and at most 2,048 output tokens. SQLite transactions share reservations between local processes. Successful usage replaces the reservation with estimated token cost. Failed calls, missing usage and interrupted processes keep their reservation because they may have been billed. SDK retries and streaming are disabled. Reservations count in displayed spend and can cause an earlier cutoff. This is a local estimate, not the provider invoice or a limit on usage made outside Dr Watson.
 
 Prices live in the versioned approved catalogue's pricing table in `config/models.json`: [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) and [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing). Haiku's long-context rate and Gemini's January 2027 rate change are included. Anthropic uses its [Chat Completions compatibility API](https://platform.claude.com/docs/en/cli-sdks-libraries/libraries/openai-sdk); no OpenAI API call is made by the automatic route. No cache discounts are assumed. Review this table if providers change prices. For a manual model missing from the table, set local `LLM_INPUT_USD_PER_MILLION` and `LLM_OUTPUT_USD_PER_MILLION`; unknown pricing blocks that route.
+
+All OpenCode Go routes are priced at $0 in this table and in the ledger: they consume the Go subscription allowance, not cash, and Go has no Extra Usage, so they never count against the monthly caps. The per-model allowance rates quoted in the evaluation reports come from the reviewed candidate metadata (`config/evaluation-candidates.json`) and estimate Go subscription consumption; they are not additional cash API spending. The monthly soft/hard limits govern only actual cash spend on external providers.
 
 Haiku requests estimate the assembled input, including instructions and tools, as serialized UTF-8 bytes divided by three (rounded up), plus 4,096 tokens of overhead. This cautious text/code heuristic is not an exact tokenizer or guaranteed upper bound. `LLM_HAIKU_INPUT_LIMIT` defaults to 80,000 estimated tokens and must stay below 100,000. Old chat history is removed first; the current request, project context, durable memory and required CEO pack are preserved. If those still exceed the threshold, a warning explains why Haiku was skipped and the next configured route is tried. Haiku effort stays at low or medium. Monthly budget enforcement, including its more conservative byte-based reservations, is unchanged.
 
