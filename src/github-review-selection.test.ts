@@ -261,3 +261,39 @@ describe("deterministic evidence prioritization", () => {
     } finally { process.exitCode = previous; }
   });
 });
+
+describe("human-review enforcement alignment", () => {
+  it.each(["SECURITY.md", "src/auth.ts", "docs/security-policy.md"])(
+    "requires human review for security-sensitive file %s without automated approval", (path) => {
+      const { manifest } = prepared([change(path, hunk(1, 1, rows(4, "guard", "+")))], CONTEXT_BYTES, "Guardrail change");
+      expect(reviewPriority(path)).toBe(0);
+      expect(manifest.humanRequired).toBe(true);
+      expect(manifest.fullScope).toBe(false);
+      expect(validateReview(JSON.stringify(approved), manifest).outcome).toBe("Incomplete");
+    });
+  it("preserves every existing human-required path", () => {
+    for (const path of [".github/workflows/agent-review.yml", ".opencode/agent.md", "AGENTS.md", "opencode.json",
+      "src/github-review.ts", "src/model-policy.ts", "src/provider.ts", "src/local-api.ts", "config/models.json",
+      "src/github-review.test.ts"]) {
+      expect(prepared([change(path, hunk(1, 1, rows(2, "guard", "+")))]).manifest.humanRequired).toBe(true);
+    }
+  });
+  it("keeps test-only changes test-classified without escalating to human review", () => {
+    const testOnly = [change("src/auth.test.ts", hunk(1, 1, rows(4, "authtest", "+"))),
+      change("src/security.test.ts", hunk(1, 1, rows(4, "sectest", "+"))),
+      change("test/helpers.ts", hunk(1, 1, rows(4, "helpers", "+")))];
+    for (const file of testOnly) expect(reviewPriority(file.filename)).toBe(2);
+    const { manifest } = prepared(testOnly);
+    expect(manifest.humanRequired).toBe(false);
+    expect(manifest.fullScope).toBe(true);
+    expect(validateReview(JSON.stringify(approved), manifest).outcome).toBe("Approved");
+  });
+  it("enforces human review while still prioritizing security-sensitive evidence", () => {
+    const { manifest } = prepared([change("README.md", hunk(1, 1, rows(4, "readme", "+"))),
+      change("src/app.test.ts", hunk(1, 1, rows(4, "apptest", "+"))),
+      change("src/auth.ts", hunk(1, 1, rows(4, "authz", "+")))], CONTEXT_BYTES, "Add auth guard");
+    expect(manifest.included.map((f) => f.path)).toEqual(["src/auth.ts", "src/app.test.ts", "README.md"]);
+    expect(manifest.humanRequired).toBe(true);
+    expect(validateReview(JSON.stringify(approved), manifest).outcome).toBe("Incomplete");
+  });
+});

@@ -50,11 +50,19 @@ export function sanitize(text: string, secrets: string[] = []): string {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");
 }
 
-// Deterministic evidence priority for budget allocation only. Ordering is NOT a
-// trust or security decision: untrusted PR text or filenames cannot buy coverage,
-// because human-inspection flags and line validation remain the security gates.
+// Historical human-inspection set (preserved verbatim): workflow/permission files,
+// agent guardrails, review-policy/privacy/auth modules and runtime policy config.
+export function humanInspectionPath(path: string): boolean {
+  return /^(?:\.github\/|\.opencode\/)|(?:^|\/)(?:AGENTS\.md|opencode\.jsonc?)$|^src\/(?:github-review|model-policy|provider|local-api)|^config\//.test(path);
+}
+
+// Deterministic evidence priority for budget allocation and human-review
+// enforcement. Ordering is NOT a trust or security decision: untrusted PR text or
+// filenames cannot buy coverage, because human-inspection flags and line validation
+// remain the security gates.
 // 0: security-sensitive configuration and guardrails (workflows/permissions,
 //    agent guardrails, auth/privacy enforcement, policy config and documents).
+//    Every priority 0 file requires human inspection (see prepareReview).
 // 1: production implementation and runtime configuration, including unrecognized
 //    file types so unknown changes are required content that fails closed instead
 //    of being silently ignored.
@@ -64,7 +72,8 @@ export function reviewPriority(path: string): 0 | 1 | 2 | 3 {
   if (/\.(?:test|spec)\.[^/]+$/i.test(path)
     || /(?:^|\/)(?:tests?|__tests__|e2e|fixtures?)\//i.test(path)
     || /(?:^|[-_.])fixtures?(?:[-_.]|$)/i.test(path)) return 2;
-  if (/^(?:\.github\/|\.opencode\/)|(?:^|\/)(?:AGENTS\.md|CODEOWNERS|opencode\.jsonc?)$|^src\/(?:github-review|model-policy|provider|local-api)|^config\//.test(path)
+  if (humanInspectionPath(path)
+    || /(?:^|\/)CODEOWNERS$/i.test(path)
     || /(?:^|[-_./])(?:auth(?:orization)?|permissions?|privacy|secrets?|credentials?|security|guardrails?|policy)(?:[-_./]|$)/i.test(path)) return 0;
   if (/\.mdx?$|\.txt$|\.rst$|\.adoc$|(?:^|\/)(?:README|LICENSE|LICENCE|CHANGELOG|CONTRIBUTING)[^/]*$|^docs\//i.test(path)) return 3;
   return 1;
@@ -130,7 +139,13 @@ export function prepareReview(input: {
     }
     if (reason?.startsWith("lockfile") && dependencyChange) manifest.fullScope = false;
     if (reason?.startsWith("sensitive")) manifest.fullScope = false;
-    if (/^(?:\.github\/|\.opencode\/)|(?:^|\/)(?:AGENTS\.md|opencode\.jsonc?)$|^src\/(?:github-review|model-policy|provider|local-api)|^config\//.test(path)) {
+    const priority = reviewPriority(path);
+    // Human review is required for the preserved historical guardrail path set and
+    // for every security-sensitive (priority 0) file, so security-policy, auth and
+    // privacy changes can never receive an automated Approved verdict. Priority 0
+    // excludes tests (classification tests them first), so test-only changes stay
+    // test-classified and only keep the historical guardrail-module requirement.
+    if (humanInspectionPath(path) || priority === 0) {
       manifest.humanRequired = true;
     }
     if (!reason && (!file.patch || file.patch.includes("\0"))) {
@@ -145,7 +160,7 @@ export function prepareReview(input: {
       manifest.excluded.push({ path, reason: "API patch incomplete; only available hunks inspected" });
     }
     items.push({ file, path, patch, rows: patch.split("\n"), limit: /\.md$/i.test(path) ? 4000 : 16_000,
-      priority: reviewPriority(path), selected: "", taken: 0 });
+      priority, selected: "", taken: 0 });
   }
   const entry = (item: Item, patch: string) => `\n${JSON.stringify({ path: item.path,
     previous: item.file.previous_filename, status: item.file.status, patch })}`;

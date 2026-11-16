@@ -88,7 +88,13 @@ at the reviewed SHA; CI is not executed or treated as an approval gate here.
   inspected. Exclusions and omitted hunks are listed with reasons; nothing is deleted.
 - Missing/truncated material source, context overflow, sensitive files, or lockfiles alongside
   dependency-manifest changes prevent approval. Documentation is optional and omissions are
-  disclosed. Workflow/review-policy/config changes additionally require human inspection.
+  disclosed. Every priority 0 file additionally requires human inspection and can never receive
+  an automated **Approved** verdict: this preserves the historical workflow/review-policy/
+  config/guardrail path set and extends it to security-sensitive non-test files such as
+  `SECURITY.md`, `src/auth.ts` and `docs/security-policy.md`. Test-only changes stay
+  test-classified (priority 2); only the historical guardrail-module test paths
+  (`src/github-review*`, `src/model-policy*`, `src/provider*`, `src/local-api*`) keep their
+  existing human-inspection requirement.
 - New-side added/context and old-side deleted line references survive hunk selection. Coverage means the **intended selected diff
   scope**, not full repository correctness or inspection of excluded evidence.
 
