@@ -5,7 +5,6 @@ import { budgetLedger, formatBudget } from "./budget.js";
 import { runConversation } from "./conversation/conversation.js";
 import { listProjects, loadProjectContext } from "./conversation/context.js";
 import { extractMemories } from "./conversation/extract-memory.js";
-import { manager } from "./agents/manager.js";
 import { MemoryStore } from "./conversation/memory.js";
 import { configureModelProvider } from "./providers/provider.js";
 import { formatStats } from "./conversation/stats.js";
@@ -128,7 +127,6 @@ while (true) {
     const ceo = ceoNext;
     ceoNext = false;
     const response = await runConversation(
-      manager,
       memory,
       sessionId,
       actualMessage,

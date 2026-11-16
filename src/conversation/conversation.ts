@@ -1,4 +1,4 @@
-import { Agent, run } from "@openai/agents";
+import { run } from "@openai/agents";
 import { config, type TaskTier, type LlmProvider } from "../config.js";
 import { createManager } from "../agents/manager.js";
 import { createRoutedModel, type ModelUsageRecord } from "../providers/provider.js";
@@ -48,7 +48,6 @@ function servingModels(records: ModelUsageRecord[]): string {
 }
 
 export async function runConversation(
-  _agent: Agent,
   memory: MemoryStore,
   sessionId: number,
   message: string,

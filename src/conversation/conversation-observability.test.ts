@@ -6,7 +6,6 @@ import { DatabaseSync } from "node:sqlite";
 import { Usage, run, type Model, type ModelRequest } from "@openai/agents";
 import { BudgetLedger } from "../budget.js";
 import { runConversation } from "./conversation.js";
-import { manager } from "../agents/manager.js";
 import { MemoryStore } from "./memory.js";
 import { createRoutedModel, guardedModel, type ModelFactory, type ModelUsageReporter } from "../providers/provider.js";
 import { modelRoutes, type ModelRoute } from "../routing/provider-chain.js";
@@ -90,12 +89,36 @@ afterEach(() => {
 
 async function ask(message = "Summarize the findings") {
   const sessionId = memory.createSession();
-  const response = await runConversation(manager, memory, sessionId, message,
+  const response = await runConversation(memory, sessionId, message,
     "Canonical project: Acme is live.", "", { tier: "standard", provider: "auto" });
   return { sessionId, response };
 }
 
 describe("conversation model-usage observability", () => {
+  it.each([false, true])("constructs the runtime manager with the routed model and CEO mode %s", async (ceo) => {
+    const sessionId = memory.createSession();
+    const response = await runConversation(memory, sessionId, "Summarize the findings",
+      "Canonical project: Acme is live.", "Keep the scope small.", { tier: "standard", provider: "auto", ceo });
+
+    const [agent, prompt] = vi.mocked(run).mock.calls[0]!;
+    expect(agent.name).toBe("Dr Watson");
+    expect(agent.model).toBe(model);
+    expect(agent.tools.map((tool) => tool.name)).toEqual(["research", "code_review"]);
+    expect(String(agent.instructions).includes("CEO mode:")).toBe(ceo);
+    expect(createRoutedModel).toHaveBeenCalledWith("standard", "auto", expect.any(Object), expect.any(Function));
+    expect(prompt).toContain("Canonical project: Acme is live.");
+    expect(prompt).toContain("Keep the scope small.");
+    expect(response).toBe("Done");
+    expect(memory.getRecentMessages(sessionId).map((item) => [item.role, item.content])).toEqual([
+      ["user", "Summarize the findings"], ["assistant", "Done"],
+    ]);
+    expect(tableRows(raw, "routing_decisions")).toEqual([
+      expect.objectContaining({ provider: "baseline", route: "general" }),
+      expect.objectContaining({ provider: "opencode", route: "planned" }),
+    ]);
+    expect(tableRows(raw, "model_usage")).toHaveLength(1);
+  });
+
   it("attributes a successful run to the primary model that served it", async () => {
     const { sessionId } = await ask();
 

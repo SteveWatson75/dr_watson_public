@@ -29,5 +29,3 @@ export function createCoder(
     ].join("\n"),
   });
 }
-
-export const coder = createCoder();

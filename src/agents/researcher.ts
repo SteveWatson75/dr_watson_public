@@ -22,5 +22,3 @@ export function createResearcher(
     ].join("\n"),
   });
 }
-
-export const researcher = createResearcher();
