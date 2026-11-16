@@ -99,11 +99,23 @@ describe("approved model catalogue", () => {
         { provider: "opencode", model: "mimo-v2.6-flash" },
       ] },
     }],
+    ["an unknown routed model", {
+      ...modelCatalogueSource,
+      tierRoutes: { ...modelCatalogueSource.tierRoutes, cheap: [
+        { provider: "opencode", model: "mimo-v9.9-flash" },
+      ] },
+    }],
+    ["a routed model with no pricing policy", {
+      ...modelCatalogueSource,
+      tierRoutes: { ...modelCatalogueSource.tierRoutes, cheap: [
+        { provider: "anthropic", model: "claude-opus-4" },
+      ] },
+    }],
   ])("rejects %s", (_label, source) => {
     expect(modelCatalogueSchema.safeParse(source).success).toBe(false);
   });
 
-  it("keeps discovery separate from approved models", () => {
+  it("keeps manual overrides outside the approved catalogue", () => {
     expect([...approvedOpenCodeModelIds()].sort()).toEqual([
       "beam-free",
       "crouton-alpha-free",
@@ -172,5 +184,15 @@ describe("catalogue pricing equivalence", () => {
     vi.stubEnv("LLM_OUTPUT_USD_PER_MILLION", "");
     expect(estimatedCost("ollama", "any", 1_000_000, 1_000_000)).toBe(0);
     expect(estimatedCost("openai", "unknown", 1, 1)).toBeUndefined();
+  });
+
+  it("keeps manually supplied pricing working for overrides", () => {
+    vi.stubEnv("LLM_INPUT_USD_PER_MILLION", "1.25");
+    vi.stubEnv("LLM_OUTPUT_USD_PER_MILLION", "3.5");
+    expect(estimatedCost("openai", "gpt-4.1-mini", 1_000_000, 1_000_000)).toBe(4.75);
+    expect(modelRoutes("hard", "openai")).toEqual([
+      { provider: "openai" },
+      { provider: "ollama" },
+    ]);
   });
 });

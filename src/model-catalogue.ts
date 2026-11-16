@@ -81,20 +81,6 @@ export const modelCatalogueSchema = z.object({
     }
   }
 
-  for (const [tier, routes] of Object.entries(catalogue.tierRoutes)) {
-    const seen = new Set<string>();
-    routes.forEach((route, index) => {
-      if (!route.model) {
-        ctx.addIssue({ code: "custom", path: ["tierRoutes", tier, index, "model"], message: "tier routes require a model" });
-      }
-      const key = `${route.provider}:${route.model ?? ""}`;
-      if (seen.has(key)) {
-        ctx.addIssue({ code: "custom", path: ["tierRoutes", tier, index], message: `duplicate route ${key}` });
-      }
-      seen.add(key);
-    });
-  }
-
   if (catalogue.localFallback.provider !== "ollama" || catalogue.localFallback.model) {
     ctx.addIssue({ code: "custom", path: ["localFallback"], message: "local fallback must be the Ollama provider without a model" });
   }
@@ -106,6 +92,23 @@ export const modelCatalogueSchema = z.object({
       ctx.addIssue({ code: "custom", path: ["pricing", index], message: `duplicate price for ${key}` });
     }
     priceKeys.add(key);
+  }
+
+  for (const [tier, routes] of Object.entries(catalogue.tierRoutes)) {
+    const seen = new Set<string>();
+    routes.forEach((route, index) => {
+      if (!route.model) {
+        ctx.addIssue({ code: "custom", path: ["tierRoutes", tier, index, "model"], message: "tier routes require a model" });
+      }
+      const key = `${route.provider}:${route.model ?? ""}`;
+      if (seen.has(key)) {
+        ctx.addIssue({ code: "custom", path: ["tierRoutes", tier, index], message: `duplicate route ${key}` });
+      }
+      seen.add(key);
+      if (route.provider !== "ollama" && !priceKeys.has(key)) {
+        ctx.addIssue({ code: "custom", path: ["tierRoutes", tier, index], message: `routed model ${key} has no approved identity or pricing policy` });
+      }
+    });
   }
 
   for (const rule of catalogue.priceRules.longContext) {
