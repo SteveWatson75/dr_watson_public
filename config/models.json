@@ -20,8 +20,8 @@
       { "provider": "gemini", "model": "gemini-3.8-flash" }
     ],
     "standard": [
-      { "provider": "opencode", "model": "deepseek-v4.1-flash" },
       { "provider": "opencode", "model": "mimo-v2.6-pro" },
+      { "provider": "opencode", "model": "deepseek-v4.1-flash" },
       { "provider": "opencode", "model": "kimi-k2.7-code" },
       { "provider": "opencode", "model": "beam-free" },
       { "provider": "openrouter", "model": "openrouter/free" },
@@ -29,6 +29,9 @@
       { "provider": "anthropic", "model": "claude-sonnet-5-5" }
     ],
     "hard": [
+      { "provider": "opencode", "model": "qwen4-max" },
+      { "provider": "opencode", "model": "kimi-k3.1-pro" },
+      { "provider": "opencode", "model": "mimo-v2.6-pro" },
       { "provider": "opencode", "model": "deepseek-v4-pro" },
       { "provider": "opencode", "model": "qwen3.8-max" },
       { "provider": "opencode", "model": "kimi-k2.7-code" },
@@ -48,6 +51,8 @@
     { "provider": "opencode", "model": "deepseek-v4-pro", "input": 0, "output": 0 },
     { "provider": "opencode", "model": "step-5-preview", "input": 0, "output": 0 },
     { "provider": "opencode", "model": "qwen3.8-max", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "qwen4-max", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "kimi-k3.1-pro", "input": 0, "output": 0 },
     { "provider": "opencode", "model": "beam-free", "input": 0, "output": 0 },
     { "provider": "opencode", "model": "crouton-alpha-free", "input": 0, "output": 0 },
     { "provider": "opencode", "model": "iceman-contributor-free", "input": 0, "output": 0 },

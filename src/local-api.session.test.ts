@@ -63,10 +63,10 @@ describe("OpenCode session routing", () => {
       max_tokens: 64,
     }, { ledger, transport, sessionId });
 
-    expect(first.route).toBe("opencode:deepseek-v4.1-flash");
+    expect(first.route).toBe("opencode:mimo-v2.6-pro");
     expect(second.route).toBe(first.route);
     expect(transport).toHaveBeenCalledTimes(2);
-    expect(transport.mock.calls[1]![0]).toEqual({ provider: "opencode", model: "deepseek-v4.1-flash" });
+    expect(transport.mock.calls[1]![0]).toEqual({ provider: "opencode", model: "mimo-v2.6-pro" });
   });
 
   it("drops continuation noise without injecting a coding anchor in GitHub Actions mode", () => {
@@ -208,7 +208,7 @@ describe("OpenCode session routing", () => {
     }, { ledger, transport, sessionId });
 
     expect(first.route).toBe("opencode:mimo-v2.6-flash");
-    expect(second.route).toBe("opencode:deepseek-v4.1-flash");
+    expect(second.route).toBe("opencode:mimo-v2.6-pro");
     expect(transport).toHaveBeenCalledTimes(2);
   });
 });

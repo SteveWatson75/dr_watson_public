@@ -74,16 +74,32 @@ describe("approved model catalogue", () => {
       ),
     );
     expect([...approvedOpenCodeModelIds()].sort()).toEqual(
-      [...legacyOpenCode].filter((id) => !["crouton-alpha-free", "iceman-contributor-free"].includes(id)).sort(),
+      [...legacyOpenCode, "qwen4-max", "kimi-k3.1-pro"]
+        .filter((id) => !["crouton-alpha-free", "iceman-contributor-free"].includes(id)).sort(),
     );
   });
 });
 
 describe("catalogue route equivalence", () => {
-  it.each(["cheap", "standard", "hard"] as const)("keeps %s fallback order except mandatory exclusions", (tier) => {
-    expect(modelRoutes(tier, "auto")).toEqual(legacyJson.tierRoutes[tier].filter(
-      (route) => route.provider !== "opencode" || !["crouton-alpha-free", "iceman-contributor-free"].includes(route.model ?? ""),
-    ));
+  const stripMandatoryExclusions = (routes: Array<{ provider: string; model?: string }>) =>
+    routes.filter((route) => route.provider !== "opencode" || !["crouton-alpha-free", "iceman-contributor-free"].includes(route.model ?? ""));
+
+  it("keeps the cheap order equal to the frozen legacy fixture minus mandatory exclusions", () => {
+    expect(modelRoutes("cheap", "auto")).toEqual(stripMandatoryExclusions(legacyJson.tierRoutes.cheap));
+  });
+
+  it("changes standard only by promoting MiMo V2.6 Pro ahead of DeepSeek Flash", () => {
+    const legacy = stripMandatoryExclusions(legacyJson.tierRoutes.standard);
+    expect(modelRoutes("standard", "auto")).toEqual([legacy[1], legacy[0], ...legacy.slice(2)]);
+  });
+
+  it("changes hard only by adding the evaluated Round 2 leaders ahead of the legacy recovery paths", () => {
+    expect(modelRoutes("hard", "auto")).toEqual([
+      { provider: "opencode", model: "qwen4-max" },
+      { provider: "opencode", model: "kimi-k3.1-pro" },
+      { provider: "opencode", model: "mimo-v2.6-pro" },
+      ...stripMandatoryExclusions(legacyJson.tierRoutes.hard),
+    ]);
   });
 
   it("keeps provider overrides and the local fallback", () => {
@@ -119,13 +135,24 @@ describe("catalogue pricing equivalence", () => {
     expect(providerDefaults).toEqual(legacyDefaults);
   });
 
-  it("keeps the legacy price table", () => {
+  it("keeps the legacy price table and prices the new Go routes at the Go rate", () => {
     expect(Object.keys(MODEL_PRICING).sort()).toEqual(
-      legacyJson.pricing.map(({ provider, model }) => `${provider}:${model}`).sort(),
+      [
+        ...legacyJson.pricing.map(({ provider, model }) => `${provider}:${model}`),
+        "opencode:qwen4-max",
+        "opencode:kimi-k3.1-pro",
+      ].sort(),
     );
     for (const { provider, model, input, output } of legacyJson.pricing) {
       expect(MODEL_PRICING[`${provider}:${model}`]).toEqual({ input, output });
       expect(estimatedCost(provider, model, 1000, 1000)).toBeCloseTo((input + output) / 1000);
+    }
+    // Go subscription routes cost no additional cash spend, matching every
+    // other opencode route. Go allowance rates live in the reviewed candidate
+    // metadata, not in the cash budget price table.
+    for (const model of ["qwen4-max", "kimi-k3.1-pro"]) {
+      expect(MODEL_PRICING[`opencode:${model}`]).toEqual({ input: 0, output: 0 });
+      expect(estimatedCost("opencode", model, 1_000_000, 1_000_000)).toBe(0);
     }
   });
 

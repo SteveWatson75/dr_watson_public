@@ -91,6 +91,31 @@ describe("production privacy expiry", () => {
     }
   });
 
+  it("treats DeepSeek's reviewed approval as valid through 2026-11-30 UTC and expired from 2026-12-01", () => {
+    expect(productionPrivacyEligibility("deepseek-v4.1-flash", new Date("2026-11-30T23:59:59.999Z"))).toEqual({ eligible: true, reviewed: true });
+    expect(productionPrivacyEligibility("deepseek-v4-pro", new Date("2026-11-30T23:59:59.999Z"))).toEqual({ eligible: true, reviewed: true });
+    expect(productionPrivacyEligibility("deepseek-v4.1-flash", new Date("2026-12-01T00:00:00.000Z")))
+      .toEqual({ eligible: false, reviewed: true, reason: "privacy approval expired after 2026-11-30" });
+    expect(productionPrivacyEligibility("deepseek-v4-pro", new Date("2026-12-01T00:00:00.000Z")))
+      .toEqual({ eligible: false, reviewed: true, reason: "privacy approval expired after 2026-11-30" });
+  });
+
+  it("uses the standard DeepSeek fallback before expiry and skips to Kimi K2.7 Code after it", async () => {
+    const factory = vi.fn<ModelFactory>(async (route) => {
+      if (route.model === "mimo-v2.6-pro") throw Object.assign(new Error("unavailable"), { status: 503 });
+      return fakeModel();
+    });
+    const warn = vi.fn();
+    const model = guardedModel(modelRoutes("standard", "auto"), ledger, factory, warn);
+    await model.getResponse(request);
+    expect(factory.mock.calls.map(([route]) => route.model)).toEqual(["mimo-v2.6-pro", "deepseek-v4.1-flash"]);
+    vi.setSystemTime(new Date("2026-12-01T00:00:00.000Z"));
+    factory.mockClear();
+    await model.getResponse(request);
+    expect(factory.mock.calls.map(([route]) => route.model)).toEqual(["mimo-v2.6-pro", "kimi-k2.7-code"]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("privacy approval expired after 2026-11-30"));
+  });
+
   it.each(["deepseek-v4.1-flash", "deepseek-v4-pro"])("rechecks %s on each call and skips it after UTC expiry", async (id) => {
     const primary = { provider: "opencode", model: id } as const;
     const fallback = { provider: "opencode", model: "mimo-v2.6-pro" } as const;
