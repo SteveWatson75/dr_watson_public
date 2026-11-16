@@ -1,0 +1,67 @@
+{
+  "description": "Frozen historical regression fixture. This is the model configuration exactly as it existed before PR #4 externalized it, with the Ollama local fallback already appended to each automatic tier route. It is a test fixture only: production code must never load this file, and it must never be derived from config/models.json. PR #2 will change model selection; keep this frozen or retire it once it no longer provides independent regression coverage.",
+  "providers": [
+    { "id": "opencode", "model": "deepseek-v4.1-flash", "baseUrl": "https://opencode.ai/inference/go/openai/v1" },
+    { "id": "anthropic", "model": "claude-haiku-5-5", "baseUrl": "https://api.anthropic.com/v1/" },
+    { "id": "gemini", "model": "gemini-3.8-flash", "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/" },
+    { "id": "ollama", "model": "llama3.2:3b", "baseUrl": "http://127.0.0.1:11434/v1" },
+    { "id": "openrouter", "model": "openrouter/free", "baseUrl": "https://openrouter.ai/api/v1" },
+    { "id": "groq", "model": "openai/gpt-oss-120b", "baseUrl": "https://api.groq.com/openai/v1" },
+    { "id": "openai", "model": "gpt-4.1-mini", "baseUrl": "https://api.openai.com/v1" }
+  ],
+  "tierRoutes": {
+    "cheap": [
+      { "provider": "opencode", "model": "mimo-v2.6-flash" },
+      { "provider": "opencode", "model": "glm-5.3-flash" },
+      { "provider": "opencode", "model": "deepseek-v4.1-flash" },
+      { "provider": "opencode", "model": "crouton-alpha-free" },
+      { "provider": "opencode", "model": "beam-free" },
+      { "provider": "opencode", "model": "iceman-contributor-free" },
+      { "provider": "openrouter", "model": "openrouter/free" },
+      { "provider": "anthropic", "model": "claude-haiku-5-5" },
+      { "provider": "gemini", "model": "gemini-3.8-flash" },
+      { "provider": "ollama" }
+    ],
+    "standard": [
+      { "provider": "opencode", "model": "deepseek-v4.1-flash" },
+      { "provider": "opencode", "model": "mimo-v2.6-pro" },
+      { "provider": "opencode", "model": "kimi-k2.7-code" },
+      { "provider": "opencode", "model": "beam-free" },
+      { "provider": "opencode", "model": "crouton-alpha-free" },
+      { "provider": "opencode", "model": "iceman-contributor-free" },
+      { "provider": "openrouter", "model": "openrouter/free" },
+      { "provider": "gemini", "model": "gemini-3.8-flash" },
+      { "provider": "anthropic", "model": "claude-sonnet-5-5" },
+      { "provider": "ollama" }
+    ],
+    "hard": [
+      { "provider": "opencode", "model": "deepseek-v4-pro" },
+      { "provider": "opencode", "model": "qwen3.8-max" },
+      { "provider": "opencode", "model": "kimi-k2.7-code" },
+      { "provider": "opencode", "model": "beam-free" },
+      { "provider": "opencode", "model": "crouton-alpha-free" },
+      { "provider": "opencode", "model": "iceman-contributor-free" },
+      { "provider": "openrouter", "model": "openrouter/free" },
+      { "provider": "gemini", "model": "gemini-3.8-flash" },
+      { "provider": "anthropic", "model": "claude-sonnet-5-5" },
+      { "provider": "ollama" }
+    ]
+  },
+  "pricing": [
+    { "provider": "opencode", "model": "mimo-v2.6-flash", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "glm-5.3-flash", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "deepseek-v4.1-flash", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "mimo-v2.6-pro", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "kimi-k2.7-code", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "deepseek-v4-pro", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "step-5-preview", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "qwen3.8-max", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "beam-free", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "crouton-alpha-free", "input": 0, "output": 0 },
+    { "provider": "opencode", "model": "iceman-contributor-free", "input": 0, "output": 0 },
+    { "provider": "anthropic", "model": "claude-haiku-5-5", "input": 0.1, "output": 0.5 },
+    { "provider": "anthropic", "model": "claude-sonnet-5-5", "input": 2, "output": 10 },
+    { "provider": "gemini", "model": "gemini-3.8-flash", "input": 0.75, "output": 3.75 },
+    { "provider": "openrouter", "model": "openrouter/free", "input": 0, "output": 0 }
+  ]
+}

@@ -55,10 +55,35 @@ routed.
 - flags newly discovered models that aren't in the approved catalogue as candidates for review.
 
 Run it weekly (e.g. `cron` or `launchd` on your Mac). If OpenCode adds a model you
-want Dr Watson to use, add it to the approved catalogue and, if it carries a
-non-zero price, its price in `src/model-catalogue.ts`. The router, budget ledger,
-Go-specific 429 cooldowns, and failover behaviour all stay unchanged until you
-make that manual edit.
+want Dr Watson to use, add it to the approved catalogue in `config/models.json`
+and, if it carries a non-zero price, its pricing entry there too. The router,
+budget ledger, Go-specific 429 cooldowns, and failover behaviour all stay
+unchanged until you make that manual edit.
+
+### Model configuration
+
+The approved catalogue lives in `config/models.json` (versioned and validated by
+the Zod schema in `src/model-catalogue.ts`). It is the single source of truth for
+provider identifiers and defaults, provider endpoints, the cheap/standard/hard
+route order, the Ollama local fallback, model pricing, and the long-context and
+scheduled pricing rules. OpenCode Go's free models (ids ending in `-free`) are
+kept ahead of external routes so a capped subscription keeps working. It is
+loaded and validated at startup and fails closed
+on a malformed or unapproved configuration, so a routed model must have an
+approved identity and pricing policy. Manual `LLM_PROVIDER`/`LLM_MODEL` overrides
+are outside this catalogue and are priced via `LLM_INPUT_USD_PER_MILLION` /
+`LLM_OUTPUT_USD_PER_MILLION` when they are not listed.
+
+`config/legacy-models.json` is a frozen historical test fixture representing the
+configuration before it was externalized. It is never loaded by production code
+and never derived from `config/models.json`; it exists only to give tests an
+independent regression expectation for route order, provider defaults and
+pricing.
+
+Model discovery (`npm run check-models`) is read-only. Approving a new model is a
+manual, reviewed edit: add it to `config/models.json`, keep its identity and
+pricing consistent, and run `npm run typecheck` and `npm test`. New models must be
+evaluated (cost, context, tool support) before they are approved.
 
 ## Budget
 
@@ -68,7 +93,7 @@ Default monthly limits are a **$15 soft warning** and a **$20 hard cap**, leavin
 
 Each model request, including specialist and memory calls, reserves a conservative estimate before sending: serialized input bytes plus overhead, and at most 2,048 output tokens. SQLite transactions share reservations between local processes. Successful usage replaces the reservation with estimated token cost. Failed calls, missing usage and interrupted processes keep their reservation because they may have been billed. SDK retries and streaming are disabled. Reservations count in displayed spend and can cause an earlier cutoff. This is a local estimate, not the provider invoice or a limit on usage made outside Dr Watson.
 
-Prices live in the versioned approved catalogue's pricing table in `src/model-catalogue.ts`: [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) and [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing). Haiku's long-context rate and Gemini's January 2027 rate change are included. Anthropic uses its [Chat Completions compatibility API](https://platform.claude.com/docs/en/cli-sdks-libraries/libraries/openai-sdk); no OpenAI API call is made by the automatic route. No cache discounts are assumed. Review this table if providers change prices. For a manual model missing from the table, set local `LLM_INPUT_USD_PER_MILLION` and `LLM_OUTPUT_USD_PER_MILLION`; unknown pricing blocks that route.
+Prices live in the versioned approved catalogue's pricing table in `config/models.json`: [Anthropic pricing](https://platform.claude.com/docs/en/about-claude/pricing) and [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing). Haiku's long-context rate and Gemini's January 2027 rate change are included. Anthropic uses its [Chat Completions compatibility API](https://platform.claude.com/docs/en/cli-sdks-libraries/libraries/openai-sdk); no OpenAI API call is made by the automatic route. No cache discounts are assumed. Review this table if providers change prices. For a manual model missing from the table, set local `LLM_INPUT_USD_PER_MILLION` and `LLM_OUTPUT_USD_PER_MILLION`; unknown pricing blocks that route.
 
 Haiku requests estimate the assembled input, including instructions and tools, as serialized UTF-8 bytes divided by three (rounded up), plus 4,096 tokens of overhead. This cautious text/code heuristic is not an exact tokenizer or guaranteed upper bound. `LLM_HAIKU_INPUT_LIMIT` defaults to 80,000 estimated tokens and must stay below 100,000. Old chat history is removed first; the current request, project context, durable memory and required CEO pack are preserved. If those still exceed the threshold, a warning explains why Haiku was skipped and the next configured route is tried. Haiku effort stays at low or medium. Monthly budget enforcement, including its more conservative byte-based reservations, is unchanged.
 
@@ -159,7 +184,7 @@ Run `npm run typecheck` and `npm test`. Tests use mocked providers and temporary
 
 ### `npm run check-models`
 
-Fetches the OpenCode Go model catalogue, compares it to the previous snapshot saved in `data/catalogue.db`, and reports any **added**, **removed**, or **changed** models. It also flags newly discovered models that aren't yet in the approved catalogue (`src/model-catalogue.ts`) as candidates for review.
+Fetches the OpenCode Go model catalogue, compares it to the previous snapshot saved in `data/catalogue.db`, and reports any **added**, **removed**, or **changed** models. It also flags newly discovered models that aren't yet in the approved catalogue (`config/models.json`, validated by `src/model-catalogue.ts`) as candidates for review.
 
 This is read-only: it never changes routing automatically. Use it weekly (e.g. via `cron` or `launchd` on your Mac) to stay aware of new OpenCode Go models, then decide whether to add one to the approved catalogue and its pricing by hand.
 
@@ -171,7 +196,7 @@ NEW
   kimi-k3    (not routed — candidate for review)
 
 2 new model(s) not currently routed.
-Review them before adding to the approved catalogue in src/model-catalogue.ts.
+Review them before adding to the approved catalogue in config/models.json.
 ```
 
 Pass `--json` for machine-readable output (added/removed/changed/candidates) if you later want to wire it into notifications.
