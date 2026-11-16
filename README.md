@@ -1,14 +1,50 @@
 # Dr Watson
 
-A local AI entry point with task routing, project context, memory and a capped monthly API budget. Requires Node.js 22.13+ and local Ollama for the zero-cost fallback. Specialists currently provide advice and plans; they have no filesystem, shell or deployment tools.
+Dr Watson is a local TypeScript assistant and model-routing API. It brings project
+context, conversation memory and provider fallback into one entry point, with a
+monthly budget cap for paid API usage.
+
+Use the CLI for project-aware conversations, or the local API as a backend for
+OpenCode. Routing uses deterministic task rules and a reviewed model catalogue,
+not another model deciding which model to call.
+
+## How it fits together
+
+- **Entry points:** `src/index.ts` runs the CLI; `src/serve.ts` starts the loopback API.
+- **Conversation:** `src/conversation/` assembles CLI context and stores messages,
+  durable memories and usage statistics in SQLite.
+- **Agents:** `src/agents/` defines the manager, coder, researcher and memory
+  extractor. The manager delegates focused questions and owns the final answer.
+- **Routing and providers:** `src/routing/` chooses the task tier;
+  `src/providers/` applies the reviewed routes, privacy checks and fallback.
+  `src/budget.ts` reserves and records estimated paid usage.
+- **Evaluation and review:** `src/evaluation/` contains the bounded model-evaluation
+  CLI; `src/github/` contains the bounded PR reviewer.
+
+The built-in specialists provide advice and plans, not autonomous implementation.
+They have no filesystem, shell or deployment tools. Proposed work must not be
+reported as executed without tool evidence. When OpenCode uses the local API,
+OpenCode owns its tools and permissions; Dr Watson routes its model requests.
+
+Detailed documentation: [security and limitations](SECURITY.md),
+[model evaluations](docs/model-evaluations.md),
+[Round 2 evidence](docs/model-evaluations-round2-results.md),
+[OpenCode integration results](docs/opencode-integration.md), and the
+[GitHub agent loop](docs/agents/github-agent-loop.md).
 
 ## Local setup
 
-1. Copy `.env.example` to `.env` (or update an existing `.env` and set `LLM_PROVIDER=auto`).
-2. Create/fund a Gemini API account and copy its key into `GEMINI_API_KEY`.
-3. Create/fund an Anthropic API account and copy its key into `ANTHROPIC_API_KEY`.
-4. Install Ollama, run `ollama pull llama3.2:3b`, and start `ollama serve` if it is not already running.
-5. Run `npm install`, then `npm run dev`. Check `/stats`, or run `npm run dev -- --stats` for status without making any API requests.
+Requires Node.js 22.13+ and Ollama for the local fallback.
+
+1. Run `npm install`.
+2. Copy `.env.example` to `.env` (or update an existing `.env`). Keep `LLM_PROVIDER=auto`
+   for automatic routing, or use `LLM_PROVIDER=ollama` to stay local.
+3. For hosted routes, add the keys you intend to use: `OPENCODE_API_KEY` for Go,
+   `GEMINI_API_KEY` for Gemini, or `ANTHROPIC_API_KEY` for Anthropic. Missing keys
+   are skipped; no hosted key is required for Ollama.
+4. Run `ollama pull llama3.2:3b`, then `ollama serve` if it is not already running.
+5. Run `npm run dev` for the CLI, or `npm run serve` for the local API.
+   Use `/stats` or `npm run dev -- --stats` to inspect usage without an API request.
 
 Keys stay in local `.env`, which is ignored by Git. Missing keys are reported at startup and skipped. No cloud, hosting, billing-console or deployment access is needed. When a task requires human action in such a service, the agent must stop and give exact steps for the user.
 
@@ -67,6 +103,20 @@ want Dr Watson to use, add it to the approved catalogue in `config/models.json`
 and, if it carries a non-zero price, its pricing entry there too. The router,
 budget ledger, Go-specific 429 cooldowns, and failover behaviour all stay
 unchanged until you make that manual edit.
+
+Pass `--json` for machine-readable added/removed/changed/candidate lists.
+Example output (historical snapshot):
+
+```text
+OpenCode Go models — last checked 2026-10-18 ...
+Total Go models: 37
+
+NEW
+  kimi-k3    (not routed — candidate for review)
+
+2 new model(s) not currently routed.
+Review them before adding to the approved catalogue in config/models.json.
+```
 
 ### Model configuration
 
@@ -199,25 +249,6 @@ Expect `x-dr-watson-route: ollama:llama3.2:3b` on the curl response and `Local A
 ## Checks
 
 Run `npm run typecheck` and `npm test`. Tests use mocked providers and temporary ledgers; they make no paid calls.
-
-### `npm run check-models`
-
-Fetches the OpenCode Go model catalogue, compares it to the previous snapshot saved in `data/catalogue.db`, and reports any **added**, **removed**, or **changed** models. It also flags newly discovered models that aren't yet in the approved catalogue (`config/models.json`, validated by `src/providers/model-catalogue.ts`) as candidates for review.
-
-This is read-only: it never changes routing automatically. Use it weekly (e.g. via `cron` or `launchd` on your Mac) to stay aware of new OpenCode Go models, then decide whether to add one to the approved catalogue and its pricing by hand.
-
-```
-OpenCode Go models — last checked 2026-10-18 ...
-Total Go models: 37
-
-NEW
-  kimi-k3    (not routed — candidate for review)
-
-2 new model(s) not currently routed.
-Review them before adding to the approved catalogue in config/models.json.
-```
-
-Pass `--json` for machine-readable output (added/removed/changed/candidates) if you later want to wire it into notifications.
 
 ## GitHub agent loop
 

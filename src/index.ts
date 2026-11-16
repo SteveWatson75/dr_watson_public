@@ -34,11 +34,8 @@ console.log(setupMessages().join("\n"));
 console.log(formatBudget(budgetLedger().status()));
 
 while (true) {
-  const prefix = sideSessionId
-    ? `[${activeProject ?? "general"}:side] > `
-    : activeProject
-      ? `[${activeProject}] > `
-      : "> ";
+  let prefix = activeProject ? `[${activeProject}] > ` : "> ";
+  if (sideSessionId) prefix = `[${activeProject ?? "general"}:side] > `;
   const message = (await terminal.question(prefix)).trim();
 
   if (!message) continue;

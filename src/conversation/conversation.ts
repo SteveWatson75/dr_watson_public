@@ -66,7 +66,7 @@ export async function runConversation(
 
   await recordShadowRoutes(memory, sessionId, message);
 
-  const render = (history: string[]) => [
+  const renderPrompt = (history: string[]) => [
     ...(ceoContext ? ["CEO CONTEXT", ceoContext, ""] : []),
     "PROJECT CONTEXT",
     projectContext,
@@ -80,26 +80,26 @@ export async function runConversation(
     "USER REQUEST",
     message,
   ].join("\n");
-  const prompt = render(recentConversation);
+  const prompt = renderPrompt(recentConversation);
 
   const routes = modelRoutes(tier, options.provider ?? config.provider);
-  const selected = routes[0]!;
+  const plannedRoute = routes[0]!;
   // The planned primary route is recorded before the run; the provider may skip
   // it later (privacy, credentials, budget, errors), so actual usage is recorded
   // per invocation below instead of assuming the plan was followed.
-  memory.addRoutingDecision({ sessionId, provider: selected.provider, model: selected.model,
+  memory.addRoutingDecision({ sessionId, provider: plannedRoute.provider, model: plannedRoute.model,
     route: "planned", modelTier: tier, durationMs: 0 });
   const usageRecords: ModelUsageRecord[] = [];
   const model = createRoutedModel(tier, options.provider ?? config.provider,
-    { prompt, messages: recentConversation, render }, (record) => usageRecords.push(record));
-  const attemptAgent = createManager(model, projectContext, Boolean(options.ceo));
+    { prompt, messages: recentConversation, render: renderPrompt }, (record) => usageRecords.push(record));
+  const runAgent = createManager(model, projectContext, Boolean(options.ceo));
   const startedAt = performance.now();
   try {
-    const result = await run(attemptAgent, prompt);
+    const result = await run(runAgent, prompt);
     const response = String(result.finalOutput ?? "No response");
     const usage = result.state.usage;
     const runId = memory.addAgentRun({
-      sessionId, agent: attemptAgent.name, model: servingModels(usageRecords),
+      sessionId, agent: runAgent.name, model: servingModels(usageRecords),
       durationMs: Math.round(performance.now() - startedAt), success: true,
       requests: usage.requests, inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens, totalTokens: usage.totalTokens,
@@ -108,7 +108,7 @@ export async function runConversation(
     memory.addMessage(sessionId, "assistant", response);
     return response;
   } catch (error) {
-    const runId = memory.addAgentRun({ sessionId, agent: attemptAgent.name,
+    const runId = memory.addAgentRun({ sessionId, agent: runAgent.name,
       model: servingModels(usageRecords),
       durationMs: Math.round(performance.now() - startedAt), success: false });
     for (const record of usageRecords) memory.addModelUsage({ agentRunId: runId, sessionId, ...record });
