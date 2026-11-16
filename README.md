@@ -72,7 +72,7 @@ See [model evaluations](docs/model-evaluations.md) for the dated privacy review,
 
 Use `/provider ollama` to stay local, `/provider anthropic` or `/provider gemini` for an explicit provider, and `/provider auto` to restore task routing. Provider overrides fall back only to Ollama. Existing `openai`, `openrouter` and `groq` providers remain manual choices. Set `LLM_PROVIDER`, `LLM_MODEL` and `LLM_BASE_URL` locally for persistent overrides; `LLM_MODEL` requires an explicit provider. Ollama defaults to `llama3.2:3b` at `http://127.0.0.1:11434/v1`; only loopback URLs are allowed.
 
-Other commands: `/projects`, `/use <project>`, `/side [question]`, `/back`, `/remember <fact>`, `/stats`, `exit`. Optional `AUTO_MEMORY=true` uses the same guarded model path for memory extraction. Remote Jev shadow requests are disabled in the app.
+Other commands: `/projects`, `/use <project>`, `/side [question]`, `/back`, `/remember <fact>`, `/stats`, `exit`. Optional `AUTO_MEMORY=true` uses the same guarded model path for memory extraction.
 
 Use `/ceo` to enable strategy mode for the next prompt (repeat it to cancel).
 It recommends a business/product next action and challenges low-value scope.
@@ -151,9 +151,17 @@ Default monthly limits are a **$15 soft warning** and a **$20 hard cap**, leavin
 
 ## Model-usage observability
 
+Flow: user request → deterministic task tier → approved model routes → provider
+attempts/fallback → model usage records → final response. Planned routing and
+actual model usage are recorded separately.
+
 `/stats` attributes requests, tokens and latency to the provider and model that actually served each call, because fallback means the planned route is not always the one that answers. One agent run can use several models, so every invocation attempt is recorded separately in `data/dr-watson.db`: `routing_decisions` records the planned route before the run (`route = planned`; older rows say `active`, which meant planned at the time), `agent_runs` records the run outcome with `model` listing the models that actually served it in first-use order (`+`-separated, or `none` when no route produced a response), and `model_usage` records each invocation attempt as `used` or `failed` with its own token counts and latency.
 
 Terminology in `/stats`: `Provider/model performance` counts model invocation **attempts** — one `model_usage` row per attempt, `used` when the model answered and `failed` when the provider rejected the call. These are not agent **runs**: `Agent usage` counts agent runs, and one run normally makes several attempts. A request is counted only once the model invocation begins. Routes skipped before any provider call — privacy expiry, missing API keys, budget limits or Go cooldowns — and routes that fail during local provider initialization are never attempts or requests; they keep only their safe warning. Observability rows never contain prompts, responses, credentials, request bodies or provider error text. Databases created before `model_usage` existed stay readable: runs without invocation rows keep their original attribution.
+
+New conversations write only planned routing decisions. Historical shadow
+classifications remain in existing databases and `/stats` distributions; no
+shadow classifier runs and no historical rows or schema are removed.
 
 Scope: these tables cover Dr Watson's CLI conversations. The OpenCode local API and the GitHub review workflows do not write them — they keep their own bounded, attempt-level diagnostics — so their calls do not appear in `/stats`.
 

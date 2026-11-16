@@ -38,17 +38,17 @@ describe("MemoryStore", () => {
     ]);
   });
 
-  it("records a shadow routing decision", () => {
+  it("records a planned routing decision", () => {
     store = new MemoryStore(":memory:");
     const sessionId = store.createSession();
 
     expect(() => store?.addRoutingDecision({
       sessionId,
-      provider: "shadow",
-      model: "shadow-v1",
-      route: "coding",
+      provider: "opencode",
+      model: "mimo-v2.6-flash",
+      route: "planned",
       modelTier: "cheap",
-      durationMs: 20,
+      durationMs: 0,
     })).not.toThrow();
   });
 
@@ -68,9 +68,9 @@ describe("MemoryStore", () => {
     });
     store.addRoutingDecision({
       sessionId,
-      provider: "baseline",
-      model: "rules-v1",
-      route: "coding",
+      provider: "opencode",
+      model: "mimo-v2.6-pro",
+      route: "planned",
       modelTier: "standard",
       durationMs: 0,
     });
@@ -91,7 +91,7 @@ describe("MemoryStore", () => {
       },
     ]);
     expect(stats.routes).toEqual([
-      { provider: "baseline", route: "coding", count: 1 },
+      { provider: "opencode", route: "planned", count: 1 },
     ]);
   });
 
@@ -214,7 +214,7 @@ describe("MemoryStore", () => {
     ]);
   });
 
-  it("keeps databases created before model_usage existed readable", () => {
+  it("preserves legacy shadow rows, routing schema and indexes alongside new planned rows", () => {
     const dir = mkdtempSync(join(tmpdir(), "dr-watson-legacy-"));
     const path = join(dir, "dr-watson.db");
     try {
@@ -251,10 +251,14 @@ describe("MemoryStore", () => {
         );
         INSERT INTO sessions (project) VALUES ('legacy');
         INSERT INTO routing_decisions (session_id, provider, model, route, model_tier, duration_ms)
-          VALUES (1, 'opencode', 'mimo-v2.6-pro', 'active', 'standard', 0);
+          VALUES (1, 'opencode', 'mimo-v2.6-pro', 'active', 'standard', 0),
+            (1, 'baseline', 'rules-v1', 'coding', 'standard', 2);
+        CREATE INDEX legacy_routing_session ON routing_decisions(session_id);
         INSERT INTO agent_runs (session_id, agent, model, duration_ms, success, requests, input_tokens, output_tokens, total_tokens)
           VALUES (1, 'Dr Watson', 'opencode:mimo-v2.6-pro', 250, 1, 1, 90, 10, 100);
       `);
+      const schema = legacy.prepare("SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'routing_decisions' ORDER BY name").all();
+      const historicalRows = legacy.prepare("SELECT * FROM routing_decisions ORDER BY id").all();
       legacy.close();
 
       store = new MemoryStore(path);
@@ -272,7 +276,27 @@ describe("MemoryStore", () => {
           averageDurationMs: 250,
         },
       ]);
-      expect(stats.routes).toEqual([{ provider: "opencode", route: "active", count: 1 }]);
+      expect(stats.routes).toEqual([
+        { provider: "baseline", route: "coding", count: 1 },
+        { provider: "opencode", route: "active", count: 1 },
+      ]);
+      store.addRoutingDecision({
+        sessionId: store.createSession(), provider: "opencode", model: "mimo-v2.6-flash",
+        route: "planned", modelTier: "cheap", durationMs: 0,
+      });
+      expect(store.getStats().routes).toEqual([
+        { provider: "baseline", route: "coding", count: 1 },
+        { provider: "opencode", route: "active", count: 1 },
+        { provider: "opencode", route: "planned", count: 1 },
+      ]);
+      const reopened = new DatabaseSync(path);
+      try {
+        expect(reopened.prepare("SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'routing_decisions' ORDER BY name").all()).toEqual(schema);
+        expect(reopened.prepare("SELECT * FROM routing_decisions WHERE id <= 2 ORDER BY id").all()).toEqual(historicalRows);
+        expect(reopened.prepare("SELECT route FROM routing_decisions WHERE id > 2").all()).toEqual([{ route: "planned" }]);
+      } finally {
+        reopened.close();
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
