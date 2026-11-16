@@ -1,4 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { MemoryStore } from "./memory.js";
 
 let store: MemoryStore | undefined;
@@ -120,5 +124,157 @@ describe("MemoryStore", () => {
       { role: "assistant", content: "two" },
       { role: "user", content: "three" },
     ]);
+  });
+
+  it("records per-invocation model usage and attributes tokens to the serving model", () => {
+    store = new MemoryStore(":memory:");
+    const sessionId = store.createSession();
+
+    const runId = store.addAgentRun({
+      sessionId,
+      agent: "Dr Watson",
+      model: "opencode:mimo-v2.6-pro+opencode:mimo-v2.6-flash",
+      durationMs: 300,
+      success: true,
+      requests: 3,
+      inputTokens: 80,
+      outputTokens: 15,
+      totalTokens: 95,
+    });
+    expect(runId).toBeGreaterThan(0);
+    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-pro", outcome: "used", durationMs: 100, inputTokens: 10, outputTokens: 2 });
+    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-pro", outcome: "failed", durationMs: 5 });
+    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-flash", outcome: "used", durationMs: 200, inputTokens: 70, outputTokens: 13 });
+
+    const stats = store.getStats();
+    expect(stats.providerModels).toEqual([
+      {
+        model: "opencode:mimo-v2.6-pro",
+        runs: 2,
+        successfulRuns: 1,
+        requests: 2,
+        inputTokens: 10,
+        outputTokens: 2,
+        totalTokens: 12,
+        averageDurationMs: 53,
+      },
+      {
+        model: "opencode:mimo-v2.6-flash",
+        runs: 1,
+        successfulRuns: 1,
+        requests: 1,
+        inputTokens: 70,
+        outputTokens: 13,
+        totalTokens: 83,
+        averageDurationMs: 200,
+      },
+    ]);
+  });
+
+  it("merges legacy run attribution with recorded invocation rows per model", () => {
+    store = new MemoryStore(":memory:");
+    const sessionId = store.createSession();
+
+    // Legacy row: recorded before model_usage existed, no invocation rows.
+    store.addAgentRun({
+      sessionId,
+      agent: "Dr Watson",
+      model: "opencode:mimo-v2.6-flash",
+      durationMs: 100,
+      success: true,
+      requests: 1,
+      inputTokens: 80,
+      outputTokens: 20,
+      totalTokens: 100,
+    });
+    const runId = store.addAgentRun({
+      sessionId,
+      agent: "Dr Watson",
+      model: "opencode:mimo-v2.6-flash",
+      durationMs: 150,
+      success: true,
+      requests: 1,
+      inputTokens: 50,
+      outputTokens: 15,
+      totalTokens: 65,
+    });
+    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-flash", outcome: "used", durationMs: 50, inputTokens: 40, outputTokens: 10 });
+
+    expect(store.getStats().providerModels).toEqual([
+      {
+        model: "opencode:mimo-v2.6-flash",
+        runs: 2,
+        successfulRuns: 2,
+        requests: 2,
+        inputTokens: 120,
+        outputTokens: 30,
+        totalTokens: 150,
+        averageDurationMs: 75,
+      },
+    ]);
+  });
+
+  it("keeps databases created before model_usage existed readable", () => {
+    const dir = mkdtempSync(join(tmpdir(), "dr-watson-legacy-"));
+    const path = join(dir, "dr-watson.db");
+    try {
+      const legacy = new DatabaseSync(path);
+      legacy.exec(`
+        CREATE TABLE sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          project TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE routing_decisions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id INTEGER NOT NULL,
+          provider TEXT NOT NULL,
+          model TEXT,
+          route TEXT NOT NULL,
+          model_tier TEXT NOT NULL,
+          duration_ms INTEGER NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE agent_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id INTEGER NOT NULL,
+          agent TEXT NOT NULL,
+          model TEXT,
+          duration_ms INTEGER NOT NULL,
+          success INTEGER NOT NULL,
+          requests INTEGER NOT NULL DEFAULT 0,
+          input_tokens INTEGER NOT NULL DEFAULT 0,
+          output_tokens INTEGER NOT NULL DEFAULT 0,
+          total_tokens INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO sessions (project) VALUES ('legacy');
+        INSERT INTO routing_decisions (session_id, provider, model, route, model_tier, duration_ms)
+          VALUES (1, 'opencode', 'mimo-v2.6-pro', 'active', 'standard', 0);
+        INSERT INTO agent_runs (session_id, agent, model, duration_ms, success, requests, input_tokens, output_tokens, total_tokens)
+          VALUES (1, 'Dr Watson', 'opencode:mimo-v2.6-pro', 250, 1, 1, 90, 10, 100);
+      `);
+      legacy.close();
+
+      store = new MemoryStore(path);
+      const stats = store.getStats();
+      expect(stats.runs).toBe(1);
+      expect(stats.providerModels).toEqual([
+        {
+          model: "opencode:mimo-v2.6-pro",
+          runs: 1,
+          successfulRuns: 1,
+          requests: 1,
+          inputTokens: 90,
+          outputTokens: 10,
+          totalTokens: 100,
+          averageDurationMs: 250,
+        },
+      ]);
+      expect(stats.routes).toEqual([{ provider: "opencode", route: "active", count: 1 }]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
