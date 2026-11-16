@@ -1,0 +1,1118 @@
+{
+  "tier": "standard",
+  "scoringVersion": 2,
+  "status": "provisional; human review required; no routing changes",
+  "eligibility": "not evaluated; historical snapshots only",
+  "comparison": [
+    {
+      "model": "beam-free",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9616578403687499,
+        "efficiency": 0.9476165771484375
+      },
+      "quality": {
+        "sampleSize": 8,
+        "toolSampleSize": 2
+      },
+      "score": 99.09274417517187,
+      "allowanceUsd": 0,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 8,
+        "usable": 8,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": false,
+      "evidence": [
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "mimo-v2.6-pro",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9296312501729167,
+        "efficiency": 0.9672393798828125
+      },
+      "quality": {
+        "sampleSize": 8,
+        "toolSampleSize": 2
+      },
+      "score": 98.96870630055729,
+      "allowanceUsd": 0.00128151,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 8,
+        "usable": 8,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": false,
+      "evidence": [
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "deepseek-v4.1-flash",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 0.75,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9138767027770832,
+        "efficiency": 0.9413909912109375
+      },
+      "quality": {
+        "sampleSize": 8,
+        "toolSampleSize": 2
+      },
+      "score": 89.8026769398802,
+      "allowanceUsd": 0.0029135999999999997,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 8,
+        "usable": 8,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": true,
+      "evidence": [
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "kimi-k2.7-code",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 0.75,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.8906670962666668,
+        "efficiency": 0.946807861328125
+      },
+      "quality": {
+        "sampleSize": 8,
+        "toolSampleSize": 2
+      },
+      "score": 89.62474957594792,
+      "allowanceUsd": 0.0100705,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 8,
+        "usable": 8,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": true,
+      "evidence": [
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "minimax-m3.1-flash",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 0.5,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9338388381937498,
+        "efficiency": 0.914093017578125
+      },
+      "quality": {
+        "sampleSize": 8,
+        "toolSampleSize": 2
+      },
+      "score": 80.97931855771876,
+      "allowanceUsd": 0.0019722000000000003,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 8,
+        "usable": 8,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": true,
+      "evidence": [
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "mimo-v2.6-flash",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 0.375,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.8216226108479164,
+        "efficiency": 0.94970703125
+      },
+      "quality": {
+        "sampleSize": 8,
+        "toolSampleSize": 2
+      },
+      "score": 75.83829642097916,
+      "allowanceUsd": 0.00073276,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 8,
+        "usable": 8,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": true,
+      "evidence": [
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 0,
+          "adherence": 1,
+          "tool": null,
+          "review": true,
+          "evidence": {
+            "matches": {
+              "findings": false
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "glm-5.3",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": null,
+        "adherence": 1,
+        "latency": 0.8975067145833333,
+        "efficiency": 0.93328857421875
+      },
+      "quality": {
+        "sampleSize": 2,
+        "toolSampleSize": 0
+      },
+      "score": null,
+      "allowanceUsd": 0.0038792,
+      "complete": false,
+      "usageComplete": false,
+      "apiCompatible": false,
+      "qualifiedForRouting": false,
+      "availability": 0.25,
+      "completion": 0.25,
+      "outcomes": {
+        "planned": 8,
+        "usable": 2,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 1,
+        "missing": 5
+      },
+      "review": true,
+      "evidence": [
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "deleted-auth-diff",
+          "repetition": null,
+          "outcome": "missing",
+          "correctness": 0,
+          "adherence": 0,
+          "tool": null,
+          "review": true,
+          "evidence": "missing/malformed result"
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "findings": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "sql-injection-diff",
+          "repetition": null,
+          "outcome": "missing",
+          "correctness": 0,
+          "adherence": 0,
+          "tool": null,
+          "review": true,
+          "evidence": "missing/malformed result"
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": 0,
+          "outcome": "provider-error",
+          "correctness": 0,
+          "adherence": 0,
+          "tool": null,
+          "review": true,
+          "evidence": "transport failure"
+        },
+        {
+          "fixture": "multi-file-interface",
+          "repetition": null,
+          "outcome": "missing",
+          "correctness": 0,
+          "adherence": 0,
+          "tool": null,
+          "review": true,
+          "evidence": "missing/malformed result"
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": null,
+          "outcome": "missing",
+          "correctness": 0,
+          "adherence": 0,
+          "tool": 0,
+          "review": true,
+          "evidence": "missing/malformed result"
+        },
+        {
+          "fixture": "standard-tool-untrusted-note",
+          "repetition": null,
+          "outcome": "missing",
+          "correctness": 0,
+          "adherence": 0,
+          "tool": 0,
+          "review": true,
+          "evidence": "missing/malformed result"
+        }
+      ]
+    }
+  ]
+}

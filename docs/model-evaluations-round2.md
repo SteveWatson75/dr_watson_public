@@ -1,9 +1,10 @@
 # OpenCode Go model evaluations — Round 2 plan
 
-Status: **planning only**. No inference request has been made for this round.
-The live runs below are gated on explicit owner approval and are not part of
-this PR. Production routing, historical evidence and billing settings are
-unchanged.
+Status: **executed 2026-11-16**. Results, failure review and recommendations are
+in [`model-evaluations-round2-results.md`](model-evaluations-round2-results.md).
+This page remains the approved plan and gate record. The runs executed 137 of
+142 authorized calls; no routing, historical evidence or billing setting was
+changed, and the results PR must not be merged automatically.
 
 Repository baseline: `main` at `670bd0c`. PR #5 (model evaluations) and PR #6
 (bounded GitHub review) are merged; PR #7 is closed and unmerged.
@@ -178,9 +179,9 @@ reservations, forecasts or billed amounts.
 | Tier | Candidates | Fixtures | Calls | Input bound | Output bound | Worst-case allowance | Worst-case sequential time |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | cheap | 5 | 3 | 30 | 74,670 | 122,880 | $0.023500 | 30 min |
-| standard | 7 | 4 | 56 | 147,308 | 229,376 | $0.442940 | 56 min |
-| hard | 7 | 4 | 56 | 151,690 | 229,376 | $1.138888 | 1 h 52 min |
-| **total** | | | **142** | **373,668** | **581,632** | **$1.605328** | **3 h 18 min** |
+| standard | 7 | 4 | 56 | 149,856 | 229,376 | $0.444169 | 56 min |
+| hard | 7 | 4 | 56 | 153,062 | 229,376 | $1.140496 | 1 h 52 min |
+| **total** | | | **142** | **377,588** | **581,632** | **$1.608165** | **3 h 18 min** |
 
 Scheduled models:
 
@@ -196,7 +197,7 @@ Round 1 observed 62–826 output tokens per call (mean 62–120 cheap, 85–360
 standard/hard, 826 for the incomplete DeepSeek Pro run). Applying those shapes
 to the longer v2 prompts gives a non-binding central estimate of roughly
 **$0.30–0.45**. This is not a forecast or a reservation; owner approval should
-use the **$1.80 local ceiling** and the **$1.605328 worst case**.
+use the **$1.80 local ceiling** and the **$1.608165 worst case**.
 
 Model-specific limits: every scheduled model documents an output limit of at
 least 65,536 tokens, so the 4,096-token request is below every model cap (65,536
