@@ -18,13 +18,15 @@ Automatic selection uses simple local task rules:
 
 | Tier | OpenCode Go models (fallback order) | Work |
 | --- | --- | --- |
-| `cheap` (default) | `mimo-v2.6-flash` → `glm-5.3-flash` → `deepseek-v4.1-flash` → `crouton-alpha-free` → `beam-free` → `iceman-contributor-free` | Routine questions, summaries, classification, issue drafting, small edits, simple tests |
-| `standard` | `deepseek-v4.1-flash` → `mimo-v2.6-pro` → `kimi-k2.7-code` → `beam-free` → `crouton-alpha-free` → `iceman-contributor-free` | Implementation, multi-file changes, repo analysis, debugging, long coding tasks |
-| `hard` | `deepseek-v4-pro` → `qwen3.8-max` → `kimi-k2.7-code` → `beam-free` → `crouton-alpha-free` → `iceman-contributor-free` | Architecture, difficult debugging, code/PR review |
+| `cheap` (default) | `mimo-v2.6-flash` → `glm-5.3-flash` → `deepseek-v4.1-flash` → `beam-free` | Routine questions, summaries, classification, issue drafting, small edits, simple tests |
+| `standard` | `deepseek-v4.1-flash` → `mimo-v2.6-pro` → `kimi-k2.7-code` → `beam-free` | Implementation, multi-file changes, repo analysis, debugging, long coding tasks |
+| `hard` | `deepseek-v4-pro` → `qwen3.8-max` → `kimi-k2.7-code` → `beam-free` | Architecture, difficult debugging, code/PR review |
 
 Use `/tier cheap`, `/tier standard`, `/tier hard`, or `/tier auto` to control the tier for subsequent prompts. On provider failure, automatic routing tries the remaining Go models in the selected tier, then other configured providers, and finally Ollama. Missing keys are skipped. Errors unrelated to provider availability stop the run. Code-review requests route to `hard` automatically.
 
-OpenCode Go's free models (`beam-free`, `crouton-alpha-free`, `iceman-contributor-free`) have no monthly limit and remain available after the paid Go models exhaust their rolling 5-hour and weekly allowances, so they are tried before leaving Go for any external provider. That keeps a run working at $0 while the subscription allowance recovers. Free models are not the full-quality default and some are limited-time; the paid Go tier is still preferred while it is available.
+`beam-free` is tried before external providers, but its temporary free offer and regional restrictions mean availability is not guaranteed. Crouton was removed because it is absent from current discovery; Iceman Contributor was removed because its terms require using request data to improve the model. The owner confirmed Go Global-region settings are enabled (2026-11-16), satisfying DeepSeek's regional prerequisite; its current ZDR agreement runs through 2026-11-30 and requires renewal. Production skips expired dated privacy approvals on each request, including explicit overrides, then follows the remaining configured fallback order. This project never changes privacy settings automatically. Existing primaries are retained provisionally, not re-certified by the small evaluation sample.
+
+See [model evaluations](docs/model-evaluations.md) for the dated privacy review, 16 synthetic fixtures, bounded CLI runner, raw comparisons and limitations. `npm run evaluate-models -- --list --tier cheap` makes no API calls.
 
 Use `/provider ollama` to stay local, `/provider anthropic` or `/provider gemini` for an explicit provider, and `/provider auto` to restore task routing. Provider overrides fall back only to Ollama. Existing `openai`, `openrouter` and `groq` providers remain manual choices. Set `LLM_PROVIDER`, `LLM_MODEL` and `LLM_BASE_URL` locally for persistent overrides; `LLM_MODEL` requires an explicit provider. Ollama defaults to `llama3.2:3b` at `http://127.0.0.1:11434/v1`; only loopback URLs are allowed.
 

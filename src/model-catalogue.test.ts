@@ -67,19 +67,23 @@ describe("approved model catalogue", () => {
     expect(approvedOpenCodeModelIds().has("step-5-preview")).toBe(false);
   });
 
-  it("matches the approved OpenCode models in the legacy fixture", () => {
+  it("excludes unavailable Crouton and training-required Iceman from historical routes", () => {
     const legacyOpenCode = new Set(
       Object.values(legacyJson.tierRoutes).flatMap((routes) =>
         routes.flatMap((route) => (route.provider === "opencode" && route.model ? [route.model] : [])),
       ),
     );
-    expect([...approvedOpenCodeModelIds()].sort()).toEqual([...legacyOpenCode].sort());
+    expect([...approvedOpenCodeModelIds()].sort()).toEqual(
+      [...legacyOpenCode].filter((id) => !["crouton-alpha-free", "iceman-contributor-free"].includes(id)).sort(),
+    );
   });
 });
 
 describe("catalogue route equivalence", () => {
-  it.each(["cheap", "standard", "hard"] as const)("keeps the exact %s fallback order", (tier) => {
-    expect(modelRoutes(tier, "auto")).toEqual(legacyJson.tierRoutes[tier]);
+  it.each(["cheap", "standard", "hard"] as const)("keeps %s fallback order except mandatory exclusions", (tier) => {
+    expect(modelRoutes(tier, "auto")).toEqual(legacyJson.tierRoutes[tier].filter(
+      (route) => route.provider !== "opencode" || !["crouton-alpha-free", "iceman-contributor-free"].includes(route.model ?? ""),
+    ));
   });
 
   it("keeps provider overrides and the local fallback", () => {

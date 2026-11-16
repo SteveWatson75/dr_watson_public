@@ -14,9 +14,7 @@
       { "provider": "opencode", "model": "mimo-v2.6-flash" },
       { "provider": "opencode", "model": "glm-5.3-flash" },
       { "provider": "opencode", "model": "deepseek-v4.1-flash" },
-      { "provider": "opencode", "model": "crouton-alpha-free" },
       { "provider": "opencode", "model": "beam-free" },
-      { "provider": "opencode", "model": "iceman-contributor-free" },
       { "provider": "openrouter", "model": "openrouter/free" },
       { "provider": "anthropic", "model": "claude-haiku-5-5" },
       { "provider": "gemini", "model": "gemini-3.8-flash" }
@@ -26,8 +24,6 @@
       { "provider": "opencode", "model": "mimo-v2.6-pro" },
       { "provider": "opencode", "model": "kimi-k2.7-code" },
       { "provider": "opencode", "model": "beam-free" },
-      { "provider": "opencode", "model": "crouton-alpha-free" },
-      { "provider": "opencode", "model": "iceman-contributor-free" },
       { "provider": "openrouter", "model": "openrouter/free" },
       { "provider": "gemini", "model": "gemini-3.8-flash" },
       { "provider": "anthropic", "model": "claude-sonnet-5-5" }
@@ -37,8 +33,6 @@
       { "provider": "opencode", "model": "qwen3.8-max" },
       { "provider": "opencode", "model": "kimi-k2.7-code" },
       { "provider": "opencode", "model": "beam-free" },
-      { "provider": "opencode", "model": "crouton-alpha-free" },
-      { "provider": "opencode", "model": "iceman-contributor-free" },
       { "provider": "openrouter", "model": "openrouter/free" },
       { "provider": "gemini", "model": "gemini-3.8-flash" },
       { "provider": "anthropic", "model": "claude-sonnet-5-5" }
