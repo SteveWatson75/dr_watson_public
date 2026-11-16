@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { evaluationFixtures } from "./evaluation-fixtures.js";
-import { candidateCatalogue, candidateCatalogueSchema, eligibility, evaluationDiscoverySchema, rankCandidates, resultSchema, scoreResult, summarize, weights, type EvaluationResult } from "./model-evaluation.js";
+import { candidateCatalogue, candidateCatalogueSchema, describeEvaluationError, eligibility, evaluationDiscoverySchema, rankCandidates, resultSchema, scoreResult, summarize, weights, type EvaluationResult } from "./model-evaluation.js";
 import { normalizeGoModels } from "./opencode-models.js";
 import { modelCatalogue, modelCatalogueSchema } from "./model-catalogue.js";
 import { modelRoutes } from "./provider-chain.js";
@@ -121,6 +121,22 @@ describe("deterministic scoring", () => {
   });
   it("does not award tool credit where no tool test exists", () => {
     expect(summarize(candidate, [fixture], [result], 2).components.tool).toBe(0);
+  });
+  it("reports availability and reliability separately from accuracy", () => {
+    const summary = summarize(candidate, [fixture], [result], 2);
+    expect(summary.outcomes).toEqual({ attempts: 2, responses: 1, usable: 1, errors: 0, timeouts: 0, missing: 1 });
+    expect(summary.availability).toBe(0.5);
+    expect(summary.reliability).toBe(0.5);
+    const failed = summarize(candidate, [fixture], [{ ...result, error: "timeout", inputTokens: null, outputTokens: null }], 1);
+    expect(failed.outcomes).toMatchObject({ attempts: 1, responses: 0, usable: 0, errors: 1, timeouts: 1 });
+    expect(failed.availability).toBe(0);
+    expect(failed.components.correctness).toBe(0);
+  });
+  it("labels timeouts and HTTP failures without persisting error bodies", () => {
+    expect(describeEvaluationError({ name: "APIConnectionTimeoutError" })).toBe("timeout");
+    expect(describeEvaluationError({ status: 429 })).toBe("HTTP 429");
+    expect(describeEvaluationError(new Error("secret response body"))).toBe("transport failure");
+    expect(describeEvaluationError(undefined)).toBe("transport failure");
   });
   it("uses cost in fixed score bands, then score and exact ID as deterministic ties", () => {
     const rows = [{ model: "b", score: 97, allowanceUsd: 2 }, { model: "a", score: 96, allowanceUsd: 1 }, { model: "c", score: 91, allowanceUsd: 0 }];

@@ -1,11 +1,14 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { candidateCatalogueSchema, type Candidate } from "./model-policy.js";
-import { rankCandidates, resultSchema, summarize, type EvaluationResult } from "./model-evaluation.js";
+import { EVALUATION_SCORING_VERSION, rankCandidates, resultSchema, summarize, summarizeV2, type EvaluationResult } from "./model-evaluation.js";
 
 const tierSchema = z.enum(["cheap", "standard", "hard"]);
+const scoringVersionSchema = z.union([z.literal(1), z.literal(2)]).optional();
 const manifestSchema = z.object({
   version: z.literal(1),
+  fixtureSet: z.union([z.literal(1), z.literal(2)]).optional(),
+  scoringVersion: scoringVersionSchema,
   startedAt: z.iso.datetime(),
   tier: tierSchema,
   repetitions: z.union([z.literal(2), z.literal(3)]),
@@ -47,6 +50,7 @@ export function buildEvaluationReport(rawReports: unknown[]) {
   const results: EvaluationResult[] = [];
   for (const report of reports) {
     if (report.tier !== first.tier || report.repetitions !== first.repetitions
+      || report.fixtureSet !== first.fixtureSet || (report.scoringVersion ?? 1) !== (first.scoringVersion ?? 1)
       || report.fixtureHash !== first.fixtureHash || requestSettings(report) !== requestSettings(first)) {
       throw new Error("Incompatible evaluation reports");
     }
@@ -74,8 +78,11 @@ export function buildEvaluationReport(rawReports: unknown[]) {
   }
   return {
     tier: first.tier,
+    scoringVersion: first.scoringVersion ?? 1,
     status: "provisional; human review required; no routing changes",
     eligibility: "not evaluated; historical snapshots only",
-    comparison: rankCandidates(candidates.map((candidate) => summarize(candidate, first.fixtures, results, first.repetitions))),
+    comparison: rankCandidates(candidates.map((candidate) => (first.scoringVersion === EVALUATION_SCORING_VERSION
+      ? summarizeV2(candidate, first.fixtures, results, first.repetitions)
+      : summarize(candidate, first.fixtures, results, first.repetitions)))),
   };
 }

@@ -1,5 +1,13 @@
 # OpenCode Go model evaluations
 
+Round 2 planning is in
+[`model-evaluations-round2.md`](model-evaluations-round2.md): refreshed
+discovery, coverage matrix, reviewed candidates, versioned v2 fixtures,
+conditional quality scoring (new reports use `scoringVersion: 2`; the historical
+reports below remain version 1) and a bounded schedule that is blocked on
+explicit owner approval. It does not modify any result in this file or in
+`evaluations/*.json`.
+
 ## Method and reproduction
 
 This is a bounded screening process, **not a statistically significant benchmark**.
