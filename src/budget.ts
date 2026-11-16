@@ -2,27 +2,9 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { config } from "./config.js";
+import { MODEL_PRICING, modelCatalogue } from "./model-catalogue.js";
 
-// USD per million tokens. OpenCode Go is a fixed subscription, so routed Go usage
-// is zero incremental cash cost here; Go's own usage limits are enforced upstream.
-// This table also prices explicit LLM_MODEL overrides, not only automatic-tier routes.
-export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
-  "opencode:mimo-v2.6-flash": { input: 0, output: 0 },
-  "opencode:glm-5.3-flash": { input: 0, output: 0 },
-  "opencode:deepseek-v4.1-flash": { input: 0, output: 0 },
-  "opencode:mimo-v2.6-pro": { input: 0, output: 0 },
-  "opencode:kimi-k2.7-code": { input: 0, output: 0 },
-  "opencode:deepseek-v4-pro": { input: 0, output: 0 },
-  "opencode:step-5-preview": { input: 0, output: 0 },
-  "opencode:qwen3.8-max": { input: 0, output: 0 },
-  "opencode:beam-free": { input: 0, output: 0 },
-  "opencode:crouton-alpha-free": { input: 0, output: 0 },
-  "opencode:iceman-contributor-free": { input: 0, output: 0 },
-  "anthropic:claude-haiku-5-5": { input: 0.1, output: 0.5 },
-  "anthropic:claude-sonnet-5-5": { input: 2, output: 10 },
-  "gemini:gemini-3.8-flash": { input: 0.75, output: 3.75 },
-  "openrouter:openrouter/free": { input: 0, output: 0 },
-};
+export { MODEL_PRICING } from "./model-catalogue.js";
 
 export function estimatedCost(provider: string, model: string, input: number, output: number, date = new Date()): number | undefined {
   if (provider === "ollama") return 0;
@@ -34,8 +16,12 @@ export function estimatedCost(provider: string, model: string, input: number, ou
     price = { input: Number(inRate), output: Number(outRate) };
     if (![price.input, price.output].every((v) => Number.isFinite(v) && v >= 0)) return undefined;
   }
-  if (model === "claude-haiku-5-5" && input > 100_000) price = { input: 0.5, output: 2.5 };
-  if (model === "gemini-3.8-flash" && date >= new Date("2027-01-01T00:00:00Z")) price = { input: 1.5, output: 7.5 };
+  for (const rule of modelCatalogue.priceRules.longContext) {
+    if (model === rule.model && input > rule.inputAbove) price = { input: rule.input, output: rule.output };
+  }
+  for (const rule of modelCatalogue.priceRules.scheduled) {
+    if (model === rule.model && date >= new Date(rule.effectiveFrom)) price = { input: rule.input, output: rule.output };
+  }
   return (input * price.input + output * price.output) / 1_000_000;
 }
 
