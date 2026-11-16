@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import { run } from "@openai/agents";
 import { loadCeoContext } from "./context.js";
 import { runConversation } from "./conversation.js";
-import { manager } from "../agents/manager.js";
 import { MemoryStore } from "./memory.js";
 import { createRoutedModel } from "../providers/provider.js";
 
@@ -29,7 +28,7 @@ beforeEach(() => {
 afterEach(() => memory.close());
 
 async function ask(message: string, options = {}) {
-  return runConversation(manager, memory, memory.createSession(), message,
+  return runConversation(memory, memory.createSession(), message,
     "Canonical selected project: Acme is live.", "", { provider: "auto", ...options });
 }
 
@@ -72,8 +71,8 @@ describe("CEO context injection", () => {
 
   it("does not persist the injected pack into later routine turns", async () => {
     const session = memory.createSession();
-    await runConversation(manager, memory, session, "Review architecture", "project", "", { provider: "auto" });
-    await runConversation(manager, memory, session, "Make a small edit", "project", "", { provider: "auto" });
+    await runConversation(memory, session, "Review architecture", "project", "", { provider: "auto" });
+    await runConversation(memory, session, "Make a small edit", "project", "", { provider: "auto" });
     expect(vi.mocked(run).mock.calls[1]![1]).not.toContain("CEO CONTEXT");
     expect(vi.mocked(run).mock.calls[1]![1]).not.toContain("Parked/future concept");
   });

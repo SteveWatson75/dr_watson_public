@@ -184,10 +184,6 @@ export function guardedModel(
   };
 }
 
-export async function createProviderModel(provider: LlmProvider, model?: string): Promise<ProviderModel> {
-  return guardedModel(provider === "ollama" ? [{ provider }] : [{ provider, model }, { provider: "ollama" }]);
-}
-
 export function createRoutedModel(tier: TaskTier, override: LlmProvider | "auto" = config.provider, history?: ExpendableHistory, report?: ModelUsageReporter): Model {
   return guardedModel(modelRoutes(tier, override), undefined, undefined, undefined, history, undefined, report);
 }

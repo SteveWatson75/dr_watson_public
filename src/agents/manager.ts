@@ -36,5 +36,3 @@ export function createManager(
     ],
   });
 }
-
-export const manager = createManager();

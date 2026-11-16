@@ -27,10 +27,10 @@ it("arms CEO mode across commands, consumes it once, and supports cancellation",
     await import("./index.js");
     expect(runConversation).toHaveBeenCalledTimes(3);
     const calls = vi.mocked(runConversation).mock.calls;
-    expect(calls[0]![6]).toMatchObject({ ceo: true });
-    expect(calls[0]![4]).toBe("No project is currently selected.");
-    expect(calls[1]![6]).toMatchObject({ ceo: false });
-    expect(calls[2]![6]).toMatchObject({ ceo: false });
+    expect(calls[0]![5]).toMatchObject({ ceo: true });
+    expect(calls[0]![3]).toBe("No project is currently selected.");
+    expect(calls[1]![5]).toMatchObject({ ceo: false });
+    expect(calls[2]![5]).toMatchObject({ ceo: false });
     expect(close).toHaveBeenCalledOnce();
   } finally {
     log.mockRestore();
