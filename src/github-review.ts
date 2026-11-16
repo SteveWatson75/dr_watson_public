@@ -1,9 +1,11 @@
 import { z } from "zod";
 
-export const CONTEXT_BYTES = 48_000;
+export const MODEL_CONTEXT_TOKENS = 32_768;
+export const OUTPUT_TOKEN_LIMIT = 8192;
+export const CONTEXT_BYTES = 20_000;
 // Bytes conservatively upper-bound text tokens without a model-specific tokenizer.
 // Include trusted policy and envelope overhead, not only untrusted evidence.
-export const INPUT_TOKEN_BUDGET = 52_000;
+export const INPUT_TOKEN_BUDGET = MODEL_CONTEXT_TOKENS - OUTPUT_TOKEN_LIMIT;
 export const RESPONSE_BYTES = 16_000;
 export const shaSchema = z.string().regex(/^[a-f0-9]{40}$/);
 export const safePath = z.string().min(1).max(240).refine((p) =>
@@ -19,7 +21,10 @@ export const filesSchema = z.array(fileSchema).max(1000);
 export type ReviewFile = z.infer<typeof fileSchema>;
 export const manifestSchema = z.object({
   pr: z.number().int().positive(), sha: shaSchema, base: shaSchema,
-  included: z.array(z.object({ path: safePath, lines: z.array(z.number().int().positive()).max(48_000) }).strict()).max(1000),
+  included: z.array(z.object({
+    path: safePath, lines: z.array(z.number().int().positive()).max(CONTEXT_BYTES),
+    deletedLines: z.array(z.number().int().positive()).max(CONTEXT_BYTES),
+  }).strict()).max(1000),
   excluded: z.array(z.object({ path: safePath, reason: z.string().max(100) }).strict()).max(1000),
   fullScope: z.boolean(), humanRequired: z.boolean(), contextBytes: z.number().int().min(0).max(CONTEXT_BYTES),
 }).strict();
@@ -28,7 +33,7 @@ export const resultSchema = z.object({
   sha: shaSchema,
   outcome: z.enum(["Approved", "Has blocking changes needed", "Incomplete"]),
   findings: z.array(z.object({
-    path: safePath, line: z.number().int().positive(),
+    path: safePath, side: z.enum(["old", "new"]), line: z.number().int().positive(),
     defect: z.string().min(10).max(1500), blockingReason: z.string().min(10).max(1000),
   }).strict()).max(12),
   manualQA: z.array(z.string().min(1).max(500)).min(1).max(10),
@@ -55,21 +60,29 @@ function excludedReason(path: string): string | undefined {
 }
 
 // Only line numbers actually present in supplied hunks may be referenced.
-export function patchLines(patch: string): number[] {
+export function patchLines(patch: string): { lines: number[]; deletedLines: number[] } {
   const lines: number[] = [];
+  const deletedLines: number[] = [];
+  let old = 0;
   let next = 0;
   for (const line of patch.split("\n")) {
-    const header = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
-    if (header) next = Number(header[1]);
-    else if (next > 0 && (line.startsWith("+") || line.startsWith(" "))) lines.push(next++);
+    const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
+    if (header) { old = Number(header[1]); next = Number(header[2]); }
+    else if (line.startsWith("-") && old > 0) deletedLines.push(old++);
+    else if (line.startsWith("+") && next > 0) lines.push(next++);
+    else if (line.startsWith(" ")) {
+      if (old > 0) old++;
+      if (next > 0) lines.push(next++);
+    }
   }
-  return lines;
+  return { lines, deletedLines };
 }
 
 export function prepareReview(input: {
   pr: number; sha: string; base: string; title: string; description: string;
   files: ReviewFile[]; ci?: string; secrets?: string[];
 }, budget = CONTEXT_BYTES): { context: string; manifest: Manifest } {
+  budget = Math.min(budget, CONTEXT_BYTES, INPUT_TOKEN_BUDGET - inputTokenUpperBound(0));
   const files = filesSchema.parse(input.files);
   const manifest: Manifest = { pr: input.pr, sha: input.sha, base: input.base, included: [], excluded: [],
     fullScope: true, humanRequired: false, contextBytes: 0 };
@@ -120,7 +133,7 @@ export function prepareReview(input: {
     }
     if (selected) {
       context += `\n${JSON.stringify({ path, previous: file.previous_filename, status: file.status, patch: selected })}`;
-      manifest.included.push({ path, lines: patchLines(selected) });
+      manifest.included.push({ path, ...patchLines(selected) });
     }
   }
   if (!manifest.included.length || manifest.humanRequired) manifest.fullScope = false;
@@ -137,7 +150,10 @@ Inspect only supplied hunks. Report concrete blocking defects, not speculative s
 Return ONLY one JSON object with exactly: sha, outcome, findings, manualQA, reason.
 sha must match the supplied reviewed SHA.
 outcome must be exactly Approved, Has blocking changes needed, or Incomplete.
-findings is an array of {path,line,defect,blockingReason}; reference only supplied paths and new-side hunk lines.
+findings is an array of {path,side,line,defect,blockingReason}; side must be old or new.
+Use new for added/context lines in the reviewed head, old ONLY for deleted lines in supplied hunks at the base.
+Inspect deletions for removed security/correctness protections, even when a hunk or entire file has no new-side lines.
+Never relocate a deletion finding to an unrelated new-side line. Missing/uninspected locations require Incomplete, not approval.
 Blocking outcome requires at least one actionable finding explaining the impact.
 Approved requires no blocking findings. Incomplete means insufficient evidence or inability to finish.
 manualQA is a nonempty array of remaining human checks. reason is a concise explanation.
@@ -158,7 +174,8 @@ export function validateReview(raw: string, manifest: Manifest): ReviewResult {
     const result = resultSchema.parse(JSON.parse(raw));
     if (result.sha !== manifest.sha) throw new Error();
     for (const finding of result.findings) {
-      if (!manifest.included.some((f) => f.path === finding.path && f.lines.includes(finding.line))) throw new Error();
+      if (!manifest.included.some((f) => f.path === finding.path
+        && (finding.side === "old" ? f.deletedLines : f.lines).includes(finding.line))) throw new Error();
     }
     if ((result.outcome === "Approved" && result.findings.length)
       || (result.outcome === "Has blocking changes needed" && !result.findings.length)) throw new Error();
@@ -179,7 +196,7 @@ export function renderReview(manifest: Manifest, result: ReviewResult, secrets: 
     `PR #${manifest.pr}; inspected commit ${manifest.sha}`,
     `Coverage: ${manifest.fullScope ? "full intended diff scope" : "partial / human review required"}; ${manifest.included.length} included, ${manifest.excluded.length} exclusions/omissions.`,
     result.reason, "Findings:",
-    ...result.findings.map((f) => `${f.path}:${f.line}: ${f.defect}\nBlocking because: ${f.blockingReason}`),
+    ...result.findings.map((f) => `${f.path}:${f.line} (${f.side} side): ${f.defect}\nBlocking because: ${f.blockingReason}`),
     ...(!result.findings.length ? ["No validated blocking findings reported."] : []),
     "Inspected:", ...manifest.included.slice(0, inventoryLimit).map((f) => f.path),
     "Excluded / omitted (evidence retained in repository):",

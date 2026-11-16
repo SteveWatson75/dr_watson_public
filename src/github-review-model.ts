@@ -4,7 +4,7 @@ import { modelCatalogue } from "./model-catalogue.js";
 import { config, providerSettings } from "./config.js";
 import { routedCompletion, LOCAL_MODEL, type CompletionTransport } from "./local-api.js";
 import { isProviderFailoverError } from "./failover.js";
-import { REVIEW_POLICY, CONTEXT_BYTES, INPUT_TOKEN_BUDGET, inputTokenUpperBound,
+import { REVIEW_POLICY, CONTEXT_BYTES, INPUT_TOKEN_BUDGET, OUTPUT_TOKEN_LIMIT, inputTokenUpperBound,
   incomplete, validateReview, type Manifest, type ReviewResult } from "./github-review.js";
 
 export const REVIEW_MODELS = ["mimo-v2.6-pro", "kimi-k2.7-code"] as const;
@@ -63,7 +63,7 @@ export async function invokeReview(context: string, manifest: Manifest, attempts
   try {
     const { completion, route } = await routedCompletion({
       model: LOCAL_MODEL, messages: [{ role: "system", content: REVIEW_POLICY }, { role: "user", content: context }],
-      max_tokens: 8192, stream: false,
+      max_tokens: OUTPUT_TOKEN_LIMIT, stream: false,
     }, { reviewRoutes: routes, transport, log: () => {}, failover: (error) => {
       if (signal?.aborted) return false;
       const { category } = errorCategory(error);

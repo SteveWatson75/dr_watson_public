@@ -6,7 +6,8 @@ import { createServer } from "node:http";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { prepareReview, filesSchema, shaSchema, manifestSchema, resultSchema, incomplete, validateReview,
-  renderReview, sanitize, CONTEXT_BYTES, inputTokenUpperBound, type Manifest } from "./github-review.js";
+  renderReview, sanitize, CONTEXT_BYTES, MODEL_CONTEXT_TOKENS, OUTPUT_TOKEN_LIMIT,
+  inputTokenUpperBound, type Manifest } from "./github-review.js";
 import { invokeReview, type Attempt } from "./github-review-model.js";
 
 const REPO = "SteveWatson75/dr_watson_public";
@@ -109,7 +110,7 @@ export function reviewConfig(baseURL: string) {
       permissions: [{ action: "*", resource: "*", effect: "deny" }] } },
     providers: { "dr-watson": { name: "Dr Watson", package: "@opencode/ai/providers/openai-compatible",
       settings: { baseURL, apiKey: "local-review", timeout: 130_000 },
-      models: { "dr-watson-auto": { name: "Bounded PR review", limit: { context: 32768, output: 8192 } } } } },
+      models: { "dr-watson-auto": { name: "Bounded PR review", limit: { context: MODEL_CONTEXT_TOKENS, output: OUTPUT_TOKEN_LIMIT } } } } },
   };
 }
 

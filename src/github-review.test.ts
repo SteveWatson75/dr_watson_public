@@ -4,7 +4,8 @@ import { readFile, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { prepareReview, validateReview, REVIEW_POLICY, renderReview, sanitize, filesSchema,
-  CONTEXT_BYTES, type ReviewResult, type ReviewFile } from "./github-review.js";
+  CONTEXT_BYTES, INPUT_TOKEN_BUDGET, MODEL_CONTEXT_TOKENS, OUTPUT_TOKEN_LIMIT, inputTokenUpperBound,
+  type ReviewResult, type ReviewFile } from "./github-review.js";
 import { invokeReview, type Attempt } from "./github-review-model.js";
 import { candidateCatalogue } from "./model-policy.js";
 import { boundedText, reviewConfig, publish } from "./github-review-cli.js";
@@ -23,7 +24,7 @@ function prepared(files = [defect], budget = CONTEXT_BYTES) {
 const approved: ReviewResult = { sha, outcome: "Approved", findings: [],
   manualQA: ["Exercise valid and invalid downloads."], reason: "No blocking defects in inspected material." };
 const blocking: ReviewResult = { ...approved, outcome: "Has blocking changes needed",
-  findings: [{ path: defect.filename, line: 2,
+  findings: [{ path: defect.filename, side: "new", line: 2,
     defect: "Untrusted URL reaches a shell interpolation, permitting command injection.",
     blockingReason: "An attacker can execute arbitrary commands on the server. Use an argument-array HTTP client." }] };
 function completion(value: unknown): OpenAI.ChatCompletion {
@@ -39,7 +40,7 @@ describe("bounded review preparation and validation", () => {
     const { context, manifest } = prepared();
     expect(context).toContain(sha);
     expect(context).toContain(base);
-    expect(manifest.included).toEqual([{ path: defect.filename, lines: [1, 2] }]);
+    expect(manifest.included).toEqual([{ path: defect.filename, lines: [1, 2], deletedLines: [] }]);
     expect(validateReview(JSON.stringify(approved), manifest).outcome).toBe("Approved");
   });
   it("excludes enormous evaluation JSON without deleting evidence or claiming inspection", () => {
@@ -70,6 +71,64 @@ describe("bounded review preparation and validation", () => {
     expect(report).toContain("src/download.ts:2");
     expect(report).toContain("An attacker can execute arbitrary commands");
     expect(report.match(/Final outcome:/g)).toHaveLength(1);
+  });
+  it.each([
+    { status: "modified" as const, patch: "@@ -42,2 +41,0 @@\n-requireAuthenticated(request);\n-requireAdmin(request);" },
+    { status: "removed" as const, patch: "@@ -1,2 +0,0 @@\n-requireAuthenticated(request);\n-requireAdmin(request);" },
+  ])("validates deletion-only authentication removal ($status) without any new-side location", (change) => {
+    const file: ReviewFile = { filename: "src/auth.ts", additions: 0, deletions: 2, ...change };
+    const { manifest } = prepared([file]);
+    const oldLine = change.status === "removed" ? 1 : 42;
+    expect(manifest.included[0]).toEqual({ path: file.filename, lines: [], deletedLines: [oldLine, oldLine + 1] });
+    const finding = { ...blocking.findings[0]!, path: file.filename, side: "old" as const, line: oldLine,
+      defect: "Removing the authentication guard allows unauthenticated access.",
+      blockingReason: "Protected requests can now access administrator data without authorization." };
+    const result = validateReview(JSON.stringify({ ...blocking, findings: [finding] }), manifest);
+    expect(result.outcome).toBe("Has blocking changes needed");
+    expect(renderReview(manifest, result)).toContain(`src/auth.ts:${oldLine} (old side)`);
+    for (const invalid of [
+      { ...finding, side: "new" }, { ...finding, line: oldLine + 2 },
+      { ...finding, path: "src/uninspected.ts" }, { ...finding, side: undefined },
+    ]) {
+      expect(validateReview(JSON.stringify({ ...blocking, findings: [invalid] }), manifest).outcome).toBe("Incomplete");
+    }
+    expect(validateReview(JSON.stringify({ ...approved, findings: [finding] }), manifest).outcome).toBe("Incomplete");
+  });
+  it("tracks independent old/new offsets across mixed hunks and rejects wrong-side/context references", () => {
+    const file: ReviewFile = { filename: "src/auth.ts", status: "modified", additions: 2, deletions: 3,
+      patch: "@@ -10,3 +10,2 @@\n keep();\n-requireAuth();\n-requireAdmin();\n+allowAll();\n@@ -50 +49 @@\n-old();\n+new();\n\\ No newline at end of file" };
+    const { manifest } = prepared([file]);
+    expect(manifest.included[0]).toEqual({ path: file.filename, lines: [10, 11, 49], deletedLines: [11, 12, 50] });
+    for (const [side, line] of [["old", 11], ["old", 12], ["old", 50], ["new", 10], ["new", 11], ["new", 49]]) {
+      expect(validateReview(JSON.stringify({ ...blocking, findings: [{ ...blocking.findings[0], path: file.filename, side, line }] }), manifest)
+        .outcome).toBe("Has blocking changes needed");
+    }
+    for (const [side, line] of [["old", 10], ["old", 49], ["new", 12], ["new", 50], ["left", 11]]) {
+      expect(validateReview(JSON.stringify({ ...blocking, findings: [{ ...blocking.findings[0], path: file.filename, side, line }] }), manifest)
+        .outcome).toBe("Incomplete");
+    }
+  });
+  it("rejects deleted lines omitted by the context budget", () => {
+    const file: ReviewFile = { filename: "src/auth.ts", status: "modified", additions: 0, deletions: 200,
+      patch: "@@ -1,200 +0,0 @@\n" + "-requireAuthenticated(request);\n".repeat(200) };
+    const { manifest } = prepared([file], 1000);
+    expect(manifest.fullScope).toBe(false);
+    expect(manifest.included[0]?.deletedLines).not.toContain(200);
+    expect(validateReview(JSON.stringify({ ...blocking,
+      findings: [{ ...blocking.findings[0], path: file.filename, side: "old", line: 200 }] }), manifest).outcome).toBe("Incomplete");
+    expect(validateReview(JSON.stringify(approved), manifest).outcome).toBe("Incomplete");
+  });
+  it("reserves output and bounds worst-case input bytes within the advertised context window", () => {
+    const limits = reviewConfig("http://127.0.0.1:8787/v1").providers["dr-watson"].models["dr-watson-auto"].limit;
+    expect(limits).toEqual({ context: MODEL_CONTEXT_TOKENS, output: OUTPUT_TOKEN_LIMIT });
+    expect(INPUT_TOKEN_BUDGET + OUTPUT_TOKEN_LIMIT).toBe(32_768);
+    expect(inputTokenUpperBound(CONTEXT_BYTES)).toBeLessThanOrEqual(INPUT_TOKEN_BUDGET);
+    // Non-ASCII text must be bounded by UTF-8 bytes, not average characters/token.
+    const file: ReviewFile = { ...defect, additions: 2000, patch: "@@ -0,0 +1,2000 @@\n" + "+😀漢字\n".repeat(2000) };
+    const { context, manifest } = prepared([file, { ...file, filename: "src/second.ts" }], 48_000);
+    expect(Buffer.byteLength(context)).toBeLessThanOrEqual(CONTEXT_BYTES);
+    expect(inputTokenUpperBound(Buffer.byteLength(context)) + OUTPUT_TOKEN_LIMIT).toBeLessThanOrEqual(limits.context);
+    expect(manifest.fullScope).toBe(false);
   });
   it("requires concrete findings for blocking and disallows findings with Approved", () => {
     for (const value of [{ ...approved, outcome: "Has blocking changes needed" }, { ...blocking, outcome: "Approved" }]) {

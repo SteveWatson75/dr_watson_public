@@ -37,17 +37,19 @@ at the reviewed SHA; CI is not executed or treated as an approval gate here.
 
 `github-review.ts` prepares PR title/body, statuses, rename paths and available diff hunks:
 
-- Source/config/tests precede optional Markdown; total context **48,000 UTF-8 bytes**,
+- Source/config/tests precede optional Markdown; total prepared evidence **20,000 UTF-8 bytes**,
   per-file **16,000 bytes**, Markdown **4,000 bytes**. Title/body/CI are capped at
-  1,000/4,000/2,000 characters. Enforce a conservative **52,000-token upper-bound budget** using
-  UTF-8 bytes plus policy bytes and 2,048 envelope tokens. No approximate “characters / 4” assumption.
+  1,000/4,000/2,000 characters. Within the advertised **32,768-token context**, reserve **8,192
+  output tokens**, leaving a **24,576-token input budget**. Conservatively bound input using
+  evidence UTF-8 bytes plus policy bytes and 2,048 envelope tokens, checked before invocation.
+  No average-tokenization or “characters / 4” assumption.
 - Exclude raw `docs/evaluations/*.json` and benchmark/observation JSON, generated/minified/build
   content, observation/snapshot data, oversized non-config JSON, `.env`/credential/key files and lockfiles. Binary/unavailable patches cannot be
   inspected. Exclusions and omitted hunks are listed with reasons; nothing is deleted.
 - Missing/truncated material source, context overflow, sensitive files, or lockfiles alongside
   dependency-manifest changes prevent approval. Documentation is optional and omissions are
   disclosed. Workflow/review-policy/config changes additionally require human inspection.
-- New-side line references survive hunk selection. Coverage means the **intended selected diff
+- New-side added/context and old-side deleted line references survive hunk selection. Coverage means the **intended selected diff
   scope**, not full repository correctness or inspection of excluded evidence.
 
 OpenCode **2.0.30** runs one agent step from an isolated temporary directory/home with all tools
@@ -77,13 +79,16 @@ Require exactly one JSON result: `sha`, `outcome`, `findings`, `manualQA`, `reas
 Only outcomes:
 
 - **Approved** — no blocking findings and required intended coverage completed.
-- **Has blocking changes needed** — at least one concrete defect with file, inspected new-side
-  line, defect description and blocking impact.
+- **Has blocking changes needed** — at least one concrete defect with file, explicit `side`
+  (`new` for added/context lines, `old` only for deleted lines), inspected line, defect description
+  and blocking impact. Deletion-only hunks and removed files can use old-side locations.
 - **Incomplete** — invalid/missing/truncated output, timeout/failure, policy/budget unavailability,
   incomplete required coverage, stale SHA, or missing/failed client invocation.
 
 Reject unknown fields, unauthorized paths/lines, >16 KB output, wrong SHA and inconsistent
 outcome/findings. Publisher revalidates the artifact, invocation diagnostics and current head/base.
+Missing/wrong sides, unrelated old lines and omitted deletion locations are invalid: Incomplete,
+never approval. Published findings label their side; old-side lines refer to the inspected base.
 Reports include inspected/excluded material, remaining manual QA and one final outcome, rendered
 as escaped plain text plus a deterministic outcome heading.
 If a comment would exceed 60 KB, publish Incomplete with an explicitly abbreviated inventory;
