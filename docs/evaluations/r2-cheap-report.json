@@ -1,0 +1,698 @@
+{
+  "tier": "cheap",
+  "scoringVersion": 2,
+  "status": "provisional; human review required; no routing changes",
+  "eligibility": "not evaluated; historical snapshots only",
+  "comparison": [
+    {
+      "model": "beam-free",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9818497557861111,
+        "efficiency": 0.9691365559895834
+      },
+      "quality": {
+        "sampleSize": 6,
+        "toolSampleSize": 2
+      },
+      "score": 99.50986311775694,
+      "allowanceUsd": 0,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 6,
+        "usable": 6,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": false,
+      "evidence": [
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "hy4-flash-free",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9646153040472223,
+        "efficiency": 0.9653727213541666
+      },
+      "quality": {
+        "sampleSize": 6,
+        "toolSampleSize": 2
+      },
+      "score": 99.2998802540139,
+      "allowanceUsd": 0,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 6,
+        "usable": 6,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": false,
+      "evidence": [
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "longcat-2.5-free",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.8778574077555555,
+        "efficiency": 0.9683837890625
+      },
+      "quality": {
+        "sampleSize": 6,
+        "toolSampleSize": 2
+      },
+      "score": 98.46241196818056,
+      "allowanceUsd": 0,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 6,
+        "usable": 6,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": false,
+      "evidence": [
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "mimo-v2.6-flash",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9134356376166667,
+        "efficiency": 0.9754231770833334
+      },
+      "quality": {
+        "sampleSize": 6,
+        "toolSampleSize": 2
+      },
+      "score": 98.888588147,
+      "allowanceUsd": 0.00021924000000000005,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 6,
+        "usable": 6,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": false,
+      "evidence": [
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "glm-5.3-flash",
+      "scoringVersion": 2,
+      "components": {
+        "correctness": 1,
+        "tool": 1,
+        "adherence": 1,
+        "latency": 0.9790759149305556,
+        "efficiency": 0.9749348958333334
+      },
+      "quality": {
+        "sampleSize": 6,
+        "toolSampleSize": 2
+      },
+      "score": 99.54010810763889,
+      "allowanceUsd": 0.000273,
+      "complete": true,
+      "usageComplete": true,
+      "apiCompatible": true,
+      "qualifiedForRouting": true,
+      "availability": 1,
+      "completion": 1,
+      "outcomes": {
+        "planned": 6,
+        "usable": 6,
+        "invalid": 0,
+        "timeouts": 0,
+        "providerErrors": 0,
+        "missing": 0
+      },
+      "review": false,
+      "evidence": [
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "release-upload-limit",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "component": true,
+              "severity": true,
+              "action": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "config-precedence",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": null,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "winner": true,
+              "reason": true
+            },
+            "shape": true,
+            "toolValid": null
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 0,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        },
+        {
+          "fixture": "cheap-tool-record",
+          "repetition": 1,
+          "outcome": "usable",
+          "correctness": 1,
+          "adherence": 1,
+          "tool": 1,
+          "review": false,
+          "evidence": {
+            "matches": {
+              "issue": true,
+              "priority": true
+            },
+            "shape": true,
+            "toolValid": true
+          }
+        }
+      ]
+    }
+  ]
+}
