@@ -37,6 +37,7 @@ export function guardedModel(
   factory: ModelFactory = rawModel,
   warn: (message: string) => void = console.warn,
   history?: ExpendableHistory,
+  failover: (error: unknown) => boolean = isProviderFailoverError,
 ): Model {
   return {
     async getResponse(request: ModelRequest): Promise<ModelResponse> {
@@ -125,7 +126,7 @@ export function guardedModel(
             goCooldowns.set(routeKey, Date.now() + GO_COOLDOWN_MS);
             warn(`${routeKey} hit a Go usage limit; cooling it down for 5 hours.`);
           }
-          const providerFailure = isProviderFailoverError(error);
+          const providerFailure = failover(error);
           if (route.provider === "ollama") {
             throw new Error(`${reason} Local Ollama is unavailable. Run \`ollama pull ${settings.model}\` and \`ollama serve\`, then retry.`, { cause: error });
           }

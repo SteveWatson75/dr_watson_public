@@ -239,16 +239,19 @@ function rememberSessionRoute(sessionId: string | undefined, route: ModelRoute):
 export async function routedCompletion(input: CompletionInput, options: {
   ledger?: BudgetLedger; transport?: CompletionTransport; log?: (line: string) => void; sessionId?: string;
   githubAction?: boolean;
+  // Dedicated trusted review entrypoint supplies policy/context, never caller messages.
+  reviewRoutes?: ModelRoute[];
+  failover?: (error: unknown) => boolean;
 } = {}): Promise<{ completion: OpenAI.ChatCompletion; route: string }> {
   const compaction = isOpenCodeCompactionRequest(input.messages);
   const rememberedTier = options.sessionId ? sessionTiers.get(options.sessionId) : undefined;
   const rememberedRoute = options.sessionId ? sessionRoutes.get(options.sessionId) : undefined;
   const tier = conversationTier(input.messages, rememberedTier, options.githubAction);
   rememberSessionTier(options.sessionId, tier);
-  const preparedMessages = rememberedRoute || compaction ? input.messages
+  const preparedMessages = options.reviewRoutes || rememberedRoute || compaction ? input.messages
     : options.githubAction ? prepareGithubActionMessages(input.messages)
     : prepareOpenCodeMessages(input.messages);
-  const routes = sessionModelRoutes(tier, options.sessionId);
+  const routes = options.reviewRoutes ?? sessionModelRoutes(tier, options.sessionId);
   let selectedRoute = "";
   const model = guardedModel(routes, options.ledger ?? budgetLedger(), async (route) => ({
     async getResponse(request) {
@@ -267,7 +270,7 @@ export async function routedCompletion(input: CompletionInput, options: {
         outputTokens: completion.usage?.completion_tokens ?? 0 }), providerData: { completion } };
     },
     async *getStreamedResponse() { throw new Error("Provider streaming is disabled."); },
-  }));
+  }), undefined, undefined, options.failover);
   const preparedInput: CompletionInput = { ...input, messages: preparedMessages };
   const request: ModelRequest = { input: JSON.stringify(preparedInput), modelSettings: {
     maxTokens: Math.min(input.max_tokens ?? 8192, input.max_completion_tokens ?? 8192, 8192),

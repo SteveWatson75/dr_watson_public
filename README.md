@@ -205,11 +205,12 @@ Pass `--json` for machine-readable output (added/removed/changed/candidates) if 
 
 ## GitHub agent loop
 
-The private-repository issue → implementation → PR → review → human QA loop is described in
-[`docs/agents/github-agent-loop.md`](docs/agents/github-agent-loop.md). Each job starts the local
-Dr Watson router (`start-dr-watson`) and runs OpenCode against `dr-watson/dr-watson-auto` on
-`http://127.0.0.1:8787/v1`, using the existing OpenCode Go subscription (`OPENCODE_API_KEY` Actions
-secret) and a repo-scoped GitHub token (`OPENCODE_GH_TOKEN` Actions secret). They use standard
-Ubuntu runners, explicit owner-triggered labels/comments, per-job timeouts, a 10-minute review step
-timeout, and no automatic merge. Disable Go balance fallback and keep GitHub Actions overage
-hard-stopped before enabling it.
+The issue → implementation → PR → review → human QA loop is described in
+[`docs/agents/github-agent-loop.md`](docs/agents/github-agent-loop.md).
+The [bounded PR reviewer](docs/agents/github-review.md) uses trusted base-branch preparation,
+OpenCode → a restricted Dr Watson API → deterministic Go routes, and a separate `GITHUB_TOKEN`
+publication job. It does not use `OPENCODE_GH_TOKEN`, inspect raw evaluation JSON, or execute PR code.
+See [security controls and limitations](SECURITY.md#github-pr-review-trust-boundaries).
+Other agent workflows retain their existing starter action and PAT design.
+All use standard Ubuntu runners and no automatic merge. Keep Go balance fallback disabled
+and GitHub Actions overage hard-stopped.

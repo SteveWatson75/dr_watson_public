@@ -1,5 +1,10 @@
 # GitHub agent loop
 
+**PR review configuration:** [bounded reviewer operations](github-review.md) and
+[security boundaries](../../SECURITY.md#github-pr-review-trust-boundaries) supersede the legacy
+review setup below. The PAT, starter action, V1 client, and generic routing described here
+apply only to the unchanged implementation/owner-comment workflows, not the new reviewer.
+
 This repository uses GitHub Issues and pull requests as the durable workflow state. GitHub Actions
 is the event router; OpenCode runs as a bounded worker. The agent never merges its own pull request.
 
@@ -15,9 +20,9 @@ is the event router; OpenCode runs as a bounded worker. The agent never merges i
    label is the approval gate for an implementation run.
 3. OpenCode implements the issue, runs typecheck/tests, and opens a draft PR with `Closes #N` and
    manual-QA notes. Unclear or blocked tickets get a clarification comment instead of code.
-4. CI runs on the PR. When it is ready for review, a separate bounded OpenCode context reads the
-   PR description, linked issue, and changed-file diff, then posts actionable review findings; it
-   cannot merge. Owner comments that contain `/opencode ...` on the issue/PR or `/oc ...` on a code
+4. CI runs on the PR. When it is ready for review, a separate bounded OpenCode context receives
+   sanitized PR metadata and selected changed-file hunks, then a deterministic publisher posts
+   a validated advisory verdict; it cannot merge. Owner comments that contain `/opencode ...` on the issue/PR or `/oc ...` on a code
    review comment trigger a focused follow-up.
 5. A human checks the diff, CI, agent review, and manual-QA checklist, then merges. QA failures go
    back into the issue as new acceptance criteria or a new linked issue.
@@ -55,8 +60,8 @@ issues before labeling individual slices. Keep one issue small enough for a fres
   `LLM_MONTHLY_SOFT_LIMIT_USD=0` / `LLM_MONTHLY_HARD_LIMIT_USD=0`, so paid routes are blocked. The
   pinned OpenCode V1 provider is injected through `OPENCODE_CONFIG_CONTENT` (see
   [README](../../README.md#opencode-local-backend)).
-- The review action step has a 10-minute `timeout-minutes` safety valve with `continue-on-error`, so
-  an over-long run is cancelled instead of waiting for the job timeout.
+- The reviewer has a 60-second upstream request timeout, two maximum provider attempts, a
+  150-second OpenCode deadline, and a separate publication job; Incomplete fails publication.
 - OpenCode Go usage is included in the existing subscription. In the OpenCode Console, keep **Use
   balance** off so hitting the Go allowance blocks the run instead of falling back to paid balance.
 - When the paid Go models reach their rolling 5-hour or weekly allowance, OpenCode Go falls back to
