@@ -2,8 +2,9 @@ import { providerApiKey } from "./config.js";
 
 // OpenCode exposes its full Go catalogue through this public endpoint. The
 // catalogue can change as OpenCode tests and adds models, so Dr Watson reads
-// it but never alters routing automatically.
-const DEFAULT_MODELS_URL = "https://opencode.ai/zen/go/v1/models";
+// it but never alters routing automatically. The documented
+// https://opencode.ai/inference/go/v1/models endpoint returns the same payload.
+export const GO_MODELS_URL = "https://opencode.ai/zen/go/v1/models";
 
 export interface GoCatalogueRaw {
   object: "list";
@@ -36,7 +37,7 @@ export interface FetchGoCatalogueOptions {
 }
 
 export async function fetchGoCatalogue(options: FetchGoCatalogueOptions = {}): Promise<GoCatalogueRaw> {
-  const { baseUrl = DEFAULT_MODELS_URL, fetchFn = globalThis.fetch } = options;
+  const { baseUrl = GO_MODELS_URL, fetchFn = globalThis.fetch } = options;
   const apiKey = options.apiKey ?? providerApiKey("opencode");
   if (!apiKey) {
     throw new Error("OpenCode Go is unavailable: copy OPENCODE_API_KEY into local .env.");

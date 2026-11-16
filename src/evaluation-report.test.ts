@@ -82,4 +82,12 @@ describe("historical offline reports", () => {
     expect(() => buildEvaluationReport([cheap, cheap])).toThrow("candidate snapshot/plan");
     expect(() => buildEvaluationReport([])).toThrow("Missing evaluation report");
   });
+
+  it("refuses to combine different versioned fixture sets", () => {
+    const cheap = read("cheap");
+    const beam = read("cheap-beam");
+    cheap.fixtureSet = 1;
+    beam.fixtureSet = 2;
+    expect(() => buildEvaluationReport([cheap, beam])).toThrow("Incompatible");
+  });
 });

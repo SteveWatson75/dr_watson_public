@@ -6,6 +6,7 @@ import { rankCandidates, resultSchema, summarize, type EvaluationResult } from "
 const tierSchema = z.enum(["cheap", "standard", "hard"]);
 const manifestSchema = z.object({
   version: z.literal(1),
+  fixtureSet: z.union([z.literal(1), z.literal(2)]).optional(),
   startedAt: z.iso.datetime(),
   tier: tierSchema,
   repetitions: z.union([z.literal(2), z.literal(3)]),
@@ -47,6 +48,7 @@ export function buildEvaluationReport(rawReports: unknown[]) {
   const results: EvaluationResult[] = [];
   for (const report of reports) {
     if (report.tier !== first.tier || report.repetitions !== first.repetitions
+      || report.fixtureSet !== first.fixtureSet
       || report.fixtureHash !== first.fixtureHash || requestSettings(report) !== requestSettings(first)) {
       throw new Error("Incompatible evaluation reports");
     }

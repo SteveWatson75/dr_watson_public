@@ -69,6 +69,16 @@ export function scoreResult(fixture: EvaluationFixture, raw: unknown) {
   };
 }
 
+// Never persist arbitrary SDK error bodies or headers. The label keeps a
+// timeout distinct from an HTTP/transport failure for availability reporting;
+// it is not evidence about reasoning quality.
+export function describeEvaluationError(error: unknown): string {
+  if (!error || typeof error !== "object") return "transport failure";
+  const { name, status } = error as { name?: unknown; status?: unknown };
+  if (name === "APIConnectionTimeoutError" || name === "TimeoutError") return "timeout";
+  return typeof status === "number" ? `HTTP ${status}` : "transport failure";
+}
+
 export const weights = { correctness: 0.35, tool: 0.25, adherence: 0.2, latency: 0.1, efficiency: 0.1 };
 
 export function summarize(candidate: Candidate, fixtures: EvaluationFixture[], results: EvaluationResult[], repetitions: number) {
@@ -87,9 +97,23 @@ export function summarize(candidate: Candidate, fixtures: EvaluationFixture[], r
     ? Math.max(0, 1 - (result.inputTokens + result.outputTokens) / 8192) : 0));
   const allowanceUsd = scores.reduce((sum, { result }) => sum + ((result?.inputTokens ?? 0) * candidate.input + (result?.outputTokens ?? 0) * candidate.output) / 1e6, 0);
   const components = { correctness, tool, adherence, latency, efficiency };
+  // Availability and reliability are reported separately from accuracy so a
+  // timeout or missing response cannot be read as a wrong answer.
+  const attempts = scores.length;
+  const responses = scores.filter(({ result }) => result && !result.error).length;
+  const usable = scores.filter(({ result }) => result && !result.error && ["stop", "tool_calls"].includes(result.finishReason)).length;
+  const outcomes = {
+    attempts, responses, usable,
+    errors: scores.filter(({ result }) => result?.error).length,
+    timeouts: scores.filter(({ result }) => result?.error === "timeout").length,
+    missing: scores.filter(({ result }) => !result).length,
+  };
   return { model: candidate.id, components, score: Object.entries(weights).reduce((sum, [key, weight]) => sum + components[key as keyof typeof components] * weight * 100, 0),
     allowanceUsd, complete: scores.every((s) => s.result && !s.result.error && s.result.inputTokens !== null && s.result.outputTokens !== null),
     apiCompatible: scores.every((s) => s.result && !s.result.error && ["stop", "tool_calls"].includes(s.result.finishReason)) && tool === 1,
+    availability: attempts ? responses / attempts : 0,
+    reliability: attempts ? usable / attempts : 0,
+    outcomes,
     review: scores.some((s) => s.score.review), evidence: scores.map(({ fixture, result, score }) => ({ fixture: fixture.id, repetition: result?.repetition ?? null, ...score })) };
 }
 
