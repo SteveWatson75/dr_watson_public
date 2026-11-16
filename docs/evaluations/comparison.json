@@ -1,0 +1,1179 @@
+{
+  "version": 1,
+  "scorerSha256": "580679d6f0e0122d8844dcb81713cb428cc55280ea2eec5f053f6bfe80cebfb9",
+  "status": "provisional; no quality-based routing change",
+  "tiers": [
+    {
+      "tier": "cheap",
+      "source": "docs/evaluations/cheap.json",
+      "sourceSha256": "9cd746b525dacc707679af3d1998e1ddc213d1f2fc23f321d6e10f32785d0709",
+      "startedAt": "2026-11-16T10:24:58.254Z",
+      "environment": {
+        "node": "v24.10.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "attempts": 20,
+      "totalTokens": 3712,
+      "comparison": [
+        {
+          "model": "mimo-v2.6-flash",
+          "components": {
+            "correctness": 0.8,
+            "tool": 1,
+            "adherence": 1,
+            "latency": 0.8911138012533334,
+            "efficiency": 0.9791259765625
+          },
+          "score": 91.70239777815833,
+          "allowanceUsd": 0.00032676,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "issue-summary",
+              "repetition": 0,
+              "correctness": 0.25,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "component": true,
+                  "cause": false,
+                  "impact": false,
+                  "workaround": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "issue-summary",
+              "repetition": 1,
+              "correctness": 0.25,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "component": true,
+                  "cause": false,
+                  "impact": false,
+                  "workaround": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "priority",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "category": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "priority",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "category": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "structured-json",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "ids": true,
+                  "total": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "structured-json",
+              "repetition": 1,
+              "correctness": 0.5,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "ids": false,
+                  "total": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "explain-code",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "result": true,
+                  "operations": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "explain-code",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "result": true,
+                  "operations": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "cheap-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "cheap-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            }
+          ],
+          "meanLatencyMs": 6533.171924800002,
+          "inputTokens": 1086,
+          "outputTokens": 624,
+          "apiFailures": 0
+        },
+        {
+          "model": "glm-5.3-flash",
+          "components": {
+            "correctness": 0.625,
+            "tool": 1,
+            "adherence": 0.7,
+            "latency": 0.6580145377783333,
+            "efficiency": 0.6815673828125
+          },
+          "score": 74.27081920590834,
+          "allowanceUsd": 0.0005691,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "issue-summary",
+              "repetition": 0,
+              "correctness": 0,
+              "adherence": 0,
+              "tool": null,
+              "review": true,
+              "evidence": "invalid JSON"
+            },
+            {
+              "fixture": "issue-summary",
+              "repetition": 1,
+              "correctness": 0.25,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "component": true,
+                  "cause": false,
+                  "impact": false,
+                  "workaround": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "priority",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "category": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "priority",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "category": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "structured-json",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "ids": true,
+                  "total": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "structured-json",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "ids": true,
+                  "total": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "explain-code",
+              "repetition": 0,
+              "correctness": 0,
+              "adherence": 0,
+              "tool": null,
+              "review": true,
+              "evidence": "invalid JSON"
+            },
+            {
+              "fixture": "explain-code",
+              "repetition": 1,
+              "correctness": 0,
+              "adherence": 0,
+              "tool": null,
+              "review": true,
+              "evidence": "invalid JSON"
+            },
+            {
+              "fixture": "cheap-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "cheap-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            }
+          ],
+          "meanLatencyMs": 4602.7401500000005,
+          "inputTokens": 1234,
+          "outputTokens": 768,
+          "apiFailures": 0
+        }
+      ]
+    },
+    {
+      "tier": "standard",
+      "source": "docs/evaluations/standard.json",
+      "sourceSha256": "0569284d225b16ac1f220def8ec82cbd1e07b5304115c5f6a737713d0e7cdaf3",
+      "startedAt": "2026-11-16T10:24:58.246Z",
+      "environment": {
+        "node": "v24.10.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "attempts": 20,
+      "totalTokens": 3816,
+      "comparison": [
+        {
+          "model": "mimo-v2.6-pro",
+          "components": {
+            "correctness": 0.8,
+            "tool": 1,
+            "adherence": 1,
+            "latency": 0.9384520754833334,
+            "efficiency": 0.976513671875
+          },
+          "score": 92.14965747358333,
+          "allowanceUsd": 0.0012066899999999996,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "typescript-function",
+              "repetition": 0,
+              "correctness": 0,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "code": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "typescript-function",
+              "repetition": 1,
+              "correctness": 0,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "code": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "fix-test",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "fix-test",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "bounded-refactor",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "bounded-refactor",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "standard-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "standard-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "multi-step",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "values": true,
+                  "count": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "multi-step",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "values": true,
+                  "count": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            }
+          ],
+          "meanLatencyMs": 3692.8754709999985,
+          "inputTokens": 1074,
+          "outputTokens": 850,
+          "apiFailures": 0
+        },
+        {
+          "model": "mimo-v2.6-flash",
+          "components": {
+            "correctness": 0.7,
+            "tool": 1,
+            "adherence": 1,
+            "latency": 0.8443931330583334,
+            "efficiency": 0.976904296875
+          },
+          "score": 87.71297429933334,
+          "allowanceUsd": 0.00037799999999999997,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "typescript-function",
+              "repetition": 0,
+              "correctness": 0,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "code": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "typescript-function",
+              "repetition": 1,
+              "correctness": 0,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "code": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "fix-test",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "fix-test",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "bounded-refactor",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "code": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "bounded-refactor",
+              "repetition": 1,
+              "correctness": 0,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "code": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "standard-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "standard-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "multi-step",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "values": true,
+                  "count": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "multi-step",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "values": true,
+                  "count": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            }
+          ],
+          "meanLatencyMs": 9336.412016500002,
+          "inputTokens": 1084,
+          "outputTokens": 808,
+          "apiFailures": 0
+        }
+      ]
+    },
+    {
+      "tier": "hard",
+      "source": "docs/evaluations/hard.json",
+      "sourceSha256": "fc6e1eca16512007442ae27bd2057db3a9987bb7218d2728774c2973def9807a",
+      "startedAt": "2026-11-16T10:24:58.257Z",
+      "environment": {
+        "node": "v24.10.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "attempts": 24,
+      "totalTokens": 9344,
+      "comparison": [
+        {
+          "model": "mimo-v2.6-pro",
+          "components": {
+            "correctness": 0.9583333333333334,
+            "tool": 1,
+            "adherence": 1,
+            "latency": 0.914020535823611,
+            "efficiency": 0.9637552897135416
+          },
+          "score": 97.3194249220382,
+          "allowanceUsd": 0.00242121,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "architecture",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "risks": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "architecture",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "risks": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "pr-review",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "defects": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "pr-review",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "defects": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "untrusted-content",
+              "repetition": 0,
+              "correctness": 0.5,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "issue": false,
+                  "status": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "untrusted-content",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "status": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complex-bug",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "observedBalance": true,
+                  "correctBalance": true,
+                  "defects": true,
+                  "fixes": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complex-bug",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "observedBalance": true,
+                  "correctBalance": true,
+                  "defects": true,
+                  "fixes": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complexity",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "decision": true,
+                  "alternative": true,
+                  "unnecessary": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complexity",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "decision": true,
+                  "alternative": true,
+                  "unnecessary": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "hard-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "hard-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            }
+          ],
+          "meanLatencyMs": 5158.7678505833355,
+          "inputTokens": 1560,
+          "outputTokens": 2003,
+          "apiFailures": 0
+        },
+        {
+          "model": "kimi-k2.7-code",
+          "components": {
+            "correctness": 0.8958333333333334,
+            "tool": 1,
+            "adherence": 1,
+            "latency": 0.8590989506944445,
+            "efficiency": 0.941192626953125
+          },
+          "score": 94.35708244314236,
+          "allowanceUsd": 0.0186832,
+          "complete": true,
+          "apiCompatible": true,
+          "review": true,
+          "evidence": [
+            {
+              "fixture": "architecture",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "risks": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "architecture",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "risks": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "pr-review",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "defects": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "pr-review",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "defects": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "untrusted-content",
+              "repetition": 0,
+              "correctness": 0.5,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "issue": false,
+                  "status": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "untrusted-content",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "status": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complex-bug",
+              "repetition": 0,
+              "correctness": 0.75,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "observedBalance": true,
+                  "correctBalance": true,
+                  "defects": true,
+                  "fixes": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complex-bug",
+              "repetition": 1,
+              "correctness": 0.5,
+              "adherence": 1,
+              "tool": null,
+              "review": true,
+              "evidence": {
+                "matches": {
+                  "observedBalance": false,
+                  "correctBalance": true,
+                  "defects": true,
+                  "fixes": false
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complexity",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "decision": true,
+                  "alternative": true,
+                  "unnecessary": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "complexity",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": null,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "decision": true,
+                  "alternative": true,
+                  "unnecessary": true
+                },
+                "shape": true,
+                "toolValid": null
+              }
+            },
+            {
+              "fixture": "hard-tool",
+              "repetition": 0,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            },
+            {
+              "fixture": "hard-tool",
+              "repetition": 1,
+              "correctness": 1,
+              "adherence": 1,
+              "tool": 1,
+              "review": false,
+              "evidence": {
+                "matches": {
+                  "issue": true,
+                  "priority": true
+                },
+                "shape": true,
+                "toolValid": true
+              }
+            }
+          ],
+          "meanLatencyMs": 8454.062958333334,
+          "inputTokens": 1456,
+          "outputTokens": 4325,
+          "apiFailures": 0
+        }
+      ]
+    }
+  ]
+}
