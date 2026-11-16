@@ -114,6 +114,13 @@ consumption, then score, then exact model ID. Bands are a declared small-sample
 indifference policy, not a confidence interval; near-boundary rankings can differ.
 Combined offline reports reject mismatched fixtures, repetition counts, endpoint,
 system instructions or request settings, and duplicate candidate plans.
+Historical scoring uses each manifest's validated **candidate/pricing and fixture
+snapshots**, not today's candidate prices, tier memberships or eligibility.
+Fixture hashes are checked against the saved fixture content. Missing/malformed
+snapshots, plans inconsistent with their snapshot, unplanned/duplicate results
+and out-of-range repetitions are rejected; there is no fallback to current
+metadata. Saved comparison fields are not trusted. Current eligibility remains
+a separate `--list`/`--dry-run` check, never a historical score adjustment.
 Only complete, eligible, compatible, reviewed evidence could justify a primary
 and fallback change. Ranked rows are not automatic routing recommendations.
 
@@ -148,6 +155,17 @@ rates, not cache discounts; these estimates need not equal billed allowance.
 Owner confirmed Extra Usage disabled before these live calls. No authentication,
 workspace privacy, regional settings, billing configuration or Actions changes
 are performed. The runner cannot independently verify the Console toggle.
+
+Production also enforces dated approvals from this same validated metadata:
+`src/model-policy.ts` shares the schema and UTC expiry check with evaluation
+eligibility. `guardedModel` checks the **resolved** Go model before budget
+reservation/provider construction, and again immediately before invocation if
+initialization crossed the deadline. Defaults, explicit overrides, agent calls
+and the local API all use this guard. Expired models are skipped with a warning;
+remaining Go, external and Ollama fallbacks retain their configured order.
+This enforces required `privacyValidThrough` dates, not the evaluation-only
+30-day discovery-review freshness rule. It does not approve new models, change
+regional settings, renew terms, or alter the retained route configuration.
 
 ## Results and decisions
 
@@ -295,10 +313,15 @@ Historical zero-price entries remain for compatibility; explicit manual
 overrides are outside the evaluation approval boundary.
 `config/legacy-models.json` is unchanged.
 
-Validation: `npm run typecheck` passed; `npm test` passed **190 tests in 20 files**;
+Correction validation: `npm run typecheck` passed; `npm test` passed **216 tests in 22 files**;
 `git diff --check` passed. Tests cover scoring/weights, malformed and missing
 observations, actual versus textual tool calls, privacy/availability eligibility,
 catalogue validation, deterministic cost-aware tie-breaking and fallback order.
+New regressions cover the UTC approval boundary, long-lived models, default and
+manual overrides, expiry during initialization, fallback order through Ollama,
+historical price isolation from current metadata edits, malformed snapshots,
+and unchanged recorded scores/costs/ranking for every tier. No evaluation
+evidence or recorded comparison was rewritten, and no new API calls were made.
 
 ## Limitations and owner-only decisions
 
