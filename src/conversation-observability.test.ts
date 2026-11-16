@@ -37,6 +37,13 @@ function fakeModel(inputTokens: number, outputTokens: number): Model {
   };
 }
 
+function rejectingModel(status = 503): Model {
+  return {
+    getResponse: vi.fn(async () => { throw Object.assign(new Error("unavailable"), { status }); }),
+    async *getStreamedResponse() { throw new Error("unused"); },
+  };
+}
+
 function tableRows(db: DatabaseSync, table: string): Array<Record<string, unknown>> {
   return db.prepare(`SELECT * FROM ${table}`).all() as Array<Record<string, unknown>>;
 }
@@ -112,10 +119,7 @@ describe("conversation model-usage observability", () => {
 
   it("attributes a fallback run to the model that actually served it, not the planned primary", async () => {
     routes = [{ provider: "opencode", model: "mimo-v2.6-pro" }, { provider: "opencode", model: "mimo-v2.6-flash" }];
-    factory = async (route) => {
-      if (route.model === "mimo-v2.6-pro") throw Object.assign(new Error("unavailable"), { status: 503 });
-      return fakeModel(300, 50);
-    };
+    factory = async (route) => (route.model === "mimo-v2.6-pro" ? rejectingModel() : fakeModel(300, 50));
     await ask();
 
     const usage = tableRows(raw, "model_usage");
@@ -159,9 +163,7 @@ describe("conversation model-usage observability", () => {
 
   it("records the final failure when no route produces a response", async () => {
     routes = [{ provider: "opencode", model: "mimo-v2.6-pro" }, { provider: "opencode", model: "mimo-v2.6-flash" }];
-    factory = async () => {
-      throw Object.assign(new Error("unavailable"), { status: 503 });
-    };
+    factory = async () => rejectingModel();
     await expect(ask()).rejects.toThrow("No usable local fallback is configured.");
 
     const runs = tableRows(raw, "agent_runs");
@@ -170,6 +172,23 @@ describe("conversation model-usage observability", () => {
       expect.objectContaining({ model: "mimo-v2.6-pro", outcome: "failed", input_tokens: 0, output_tokens: 0 }),
       expect.objectContaining({ model: "mimo-v2.6-flash", outcome: "failed", input_tokens: 0, output_tokens: 0 }),
     ]);
+  });
+
+  it("does not record an attempt when provider initialization fails before the invocation", async () => {
+    routes = [{ provider: "opencode", model: "mimo-v2.6-pro" }, { provider: "opencode", model: "mimo-v2.6-flash" }];
+    factory = async (route) => {
+      if (route.model === "mimo-v2.6-pro") throw Object.assign(new Error("client construction failed"), { status: 503 });
+      return fakeModel(300, 50);
+    };
+    await ask();
+
+    // Initialization failure: counted as no request, only the successful
+    // fallback is recorded, while the safe fallback warning is preserved.
+    expect(tableRows(raw, "model_usage")).toEqual([
+      expect.objectContaining({ provider: "opencode", model: "mimo-v2.6-flash", outcome: "used", input_tokens: 300, output_tokens: 50 }),
+    ]);
+    expect(tableRows(raw, "agent_runs")[0]).toMatchObject({ model: "opencode:mimo-v2.6-flash", success: 1 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("opencode:mimo-v2.6-pro is unavailable"));
   });
 
   it("splits tokens and latency across multiple models within one agent run", async () => {

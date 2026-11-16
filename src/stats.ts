@@ -1,9 +1,5 @@
 import type { Stats } from "./memory.js";
 
-function percent(part: number, total: number): string {
-  return total ? `${Math.round((part / total) * 100)}%` : "n/a";
-}
-
 function distribution(
   rows: Array<{ provider: string; count: number } & Record<string, unknown>>,
   key: string,
@@ -28,7 +24,7 @@ export function formatStats(stats: Stats): string {
     ...(stats.providerModels.length
       ? stats.providerModels.flatMap((item) => [
           `  ${item.model}`,
-          `    Runs: ${item.runs}; success ${percent(item.successfulRuns, item.runs)}; failed ${item.runs - item.successfulRuns}`,
+          `    Attempts: ${item.runs}; used ${item.successfulRuns}; failed ${item.runs - item.successfulRuns}`,
           `    Requests: ${item.requests}; avg latency ${item.averageDurationMs} ms`,
           `    Tokens: ${item.totalTokens.toLocaleString()} total (${item.inputTokens.toLocaleString()} in / ${item.outputTokens.toLocaleString()} out)`,
         ])

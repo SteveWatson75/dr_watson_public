@@ -18,7 +18,7 @@ describe("formatStats", () => {
 
     expect(output).toContain("1,250 total");
     expect(output).toContain("gemini:gemini-3.7-flash");
-    expect(output).toContain("success 50%; failed 1");
+    expect(output).toContain("Attempts: 2; used 1; failed 1");
     expect(output).toContain("140 total (100 in / 20 out)");
     expect(output).toContain("baseline: coding = 4");
   });

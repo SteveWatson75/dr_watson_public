@@ -11,8 +11,10 @@ import { productionPrivacyEligibility } from "./model-policy.js";
 export type ProviderModel = Model;
 export type ModelFactory = (route: ModelRoute) => Promise<Model>;
 
-// One record per invocation attempt. Skipped routes (privacy, missing key,
-// budget, cooldown) are never attempted, so they are logged as safe fallback
+// One record per invocation attempt. A request is only counted once the model
+// invocation begins: routes skipped before any provider call (privacy, missing
+// key, budget, cooldown) and routes that fail during local provider
+// initialization are never attempted, so they are logged as safe fallback
 // reasons instead of recorded here. Records never contain prompts, responses,
 // credentials or provider error text.
 export interface ModelUsageRecord {
@@ -119,35 +121,25 @@ export function guardedModel(
           warn("Warning: monthly soft budget limit reached.");
         }
         const attemptStartedAt = performance.now();
+        let response: ModelResponse;
+        let invocationBegan = false;
         try {
           const model = await factory(route);
           // Recheck all privacy restrictions after asynchronous initialization.
           if (privacyBlocked()) continue;
-          const response = await model.getResponse(boundedRequest);
-          const usage = response.usage;
-          if (usage && Number.isFinite(usage.inputTokens) && Number.isFinite(usage.outputTokens)
-            && usage.inputTokens >= 0 && usage.outputTokens >= 0
-            && ((usage.inputTokens > 0 && usage.outputTokens > 0) || route.provider === "ollama" || route.provider === "opencode")) {
-            const actual = estimatedCost(route.provider, settings.model, usage.inputTokens, usage.outputTokens, pricedAt);
-            if (actual !== undefined) ledger.settle(id, actual, usage.inputTokens, usage.outputTokens);
-          }
-          const settledStatus = ledger.status();
-          if (route.provider !== "ollama" && settledStatus.softLimit > 0 && settledStatus.spent >= settledStatus.softLimit) {
-            warn("Warning: monthly soft budget limit reached.");
-          }
-          report?.({
-            provider: route.provider, model: settings.model, outcome: "used",
-            durationMs: Math.round(performance.now() - attemptStartedAt),
-            inputTokens: usage && Number.isFinite(usage.inputTokens) && usage.inputTokens >= 0 ? usage.inputTokens : 0,
-            outputTokens: usage && Number.isFinite(usage.outputTokens) && usage.outputTokens >= 0 ? usage.outputTokens : 0,
-          });
-          return response;
+          invocationBegan = true;
+          response = await model.getResponse(boundedRequest);
         } catch (error) {
-          report?.({
-            provider: route.provider, model: settings.model, outcome: "failed",
-            durationMs: Math.round(performance.now() - attemptStartedAt),
-            inputTokens: 0, outputTokens: 0,
-          });
+          // Provider construction failures are local initialization problems,
+          // not model invocations, so a failed attempt is only reported once the
+          // invocation has begun. Fallback behavior and warnings are unchanged.
+          if (invocationBegan) {
+            report?.({
+              provider: route.provider, model: settings.model, outcome: "failed",
+              durationMs: Math.round(performance.now() - attemptStartedAt),
+              inputTokens: 0, outputTokens: 0,
+            });
+          }
           const statusCode = error && typeof error === "object" && "status" in error ? Number(error.status) : undefined;
           if (route.provider === "opencode" && statusCode === 429) {
             goCooldowns.set(routeKey, Date.now() + GO_COOLDOWN_MS);
@@ -160,7 +152,29 @@ export function guardedModel(
           if (!providerFailure) throw error;
           reason = `${route.provider}:${settings.model} is unavailable.`;
           warn(`${reason} Trying the next configured route.`);
+          continue;
         }
+        // Accounting and reporting run outside the provider-failure path: their
+        // errors are bugs, not upstream provider failures, so they must not be
+        // classified as such or trigger a fallback.
+        const usage = response.usage;
+        if (usage && Number.isFinite(usage.inputTokens) && Number.isFinite(usage.outputTokens)
+          && usage.inputTokens >= 0 && usage.outputTokens >= 0
+          && ((usage.inputTokens > 0 && usage.outputTokens > 0) || route.provider === "ollama" || route.provider === "opencode")) {
+          const actual = estimatedCost(route.provider, settings.model, usage.inputTokens, usage.outputTokens, pricedAt);
+          if (actual !== undefined) ledger.settle(id, actual, usage.inputTokens, usage.outputTokens);
+        }
+        const settledStatus = ledger.status();
+        if (route.provider !== "ollama" && settledStatus.softLimit > 0 && settledStatus.spent >= settledStatus.softLimit) {
+          warn("Warning: monthly soft budget limit reached.");
+        }
+        report?.({
+          provider: route.provider, model: settings.model, outcome: "used",
+          durationMs: Math.round(performance.now() - attemptStartedAt),
+          inputTokens: usage && Number.isFinite(usage.inputTokens) && usage.inputTokens >= 0 ? usage.inputTokens : 0,
+          outputTokens: usage && Number.isFinite(usage.outputTokens) && usage.outputTokens >= 0 ? usage.outputTokens : 0,
+        });
+        return response;
       }
       throw new Error(`${reason} No usable local fallback is configured.`);
     },
