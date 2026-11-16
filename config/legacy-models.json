@@ -1,5 +1,5 @@
 {
-  "description": "Frozen historical regression fixture. This is the model configuration exactly as it existed before PR #4 externalized it, with the Ollama local fallback already appended to each automatic tier route. It is a test fixture only: production code must never load this file, and it must never be derived from config/models.json. PR #2 will change model selection; keep this frozen or retire it once it no longer provides independent regression coverage.",
+  "description": "Frozen historical regression fixture. This is the model configuration exactly as it existed before PR #4 externalized it, with the Ollama local fallback already appended to each automatic tier route. Provenance: transcribed from commit d6abc27 (src/provider-chain.ts TIER_ROUTES, src/budget.ts MODEL_PRICING, src/config.ts providerDefaults) on the pre-PR main branch. It is a test fixture only: production code must never load this file, and it must never be derived from config/models.json. PR #2 will change model selection; keep this frozen or retire it once it no longer provides independent regression coverage.",
   "providers": [
     { "id": "opencode", "model": "deepseek-v4.1-flash", "baseUrl": "https://opencode.ai/inference/go/openai/v1" },
     { "id": "anthropic", "model": "claude-haiku-5-5", "baseUrl": "https://api.anthropic.com/v1/" },
