@@ -10,8 +10,9 @@ describe("GitHub agents", () => {
     expect(workflow).toContain("pull_request_target:");
     expect(workflow).toContain("ref: main");
     expect(workflow).not.toContain("github.event.pull_request.base.sha");
-    expect(workflow).toContain('BASE_SHA="$(git rev-parse HEAD)"');
-    expect(workflow).toContain('echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"');
+    expect(workflow).not.toContain("BASE_SHA");
+    expect(workflow).toContain('gh pr diff "$PR_NUMBER" > "$RUNNER_TEMP/pr.diff"');
+    expect(workflow).toContain('test -s "$RUNNER_TEMP/pr.diff"');
     expect(workflow).toContain("persist-credentials: false");
     expect(workflow).toContain("contents: read\n  pull-requests: write");
     expect(workflow).not.toContain("OPENCODE_GH_TOKEN");
@@ -21,6 +22,8 @@ describe("GitHub agents", () => {
       .split("\n      - name:")[0]!;
     expect(review).not.toContain("GH_TOKEN:");
     expect(review).not.toContain("${{ secrets.");
+    expect(review).toContain("Read .git/review-pr.json and $RUNNER_TEMP/pr.diff.");
+    expect(review).toContain("authoritative for which files and changes belong to this PR");
     const config = JSON.parse(review.split("OPENCODE_CONFIG_CONTENT: >-\n")[1]!.split("\n")[0]!);
     expect(config.agents.build.steps).toBe(30);
     expect(config.permissions[0]).toEqual({ action: "*", resource: "*", effect: "deny" });
