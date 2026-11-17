@@ -86,27 +86,6 @@ describe("OpenCode session routing", () => {
     ]);
   });
 
-  it("uses trusted review routes without preparing or anchoring supplied messages", async () => {
-    const messages = [
-      { role: "system" as const, content: "Trusted review policy" },
-      { role: "user" as const, content: "Continue" },
-    ];
-    await routedCompletion(
-      { model: LOCAL_MODEL, messages },
-      {
-        ledger,
-        transport,
-        reviewRoutes: [{ provider: "opencode", model: "mimo-v2.6-pro" }],
-      },
-    );
-
-    expect(transport).toHaveBeenCalledExactlyOnceWith(
-      { provider: "opencode", model: "mimo-v2.6-pro" },
-      expect.objectContaining({ messages }),
-      undefined,
-    );
-  });
-
   it("maps developer messages to system for the OpenCode Go chat-completions API", async () => {
     await routedCompletion(
       {

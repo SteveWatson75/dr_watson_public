@@ -26,9 +26,6 @@ export interface CompletionOptions {
   log?: (line: string) => void;
   sessionId?: string;
   githubAction?: boolean;
-  // Dedicated trusted review entrypoint supplies policy/context, never caller messages.
-  reviewRoutes?: ModelRoute[];
-  failover?: (error: unknown) => boolean;
 }
 
 const fallbackGoSession = `dr-watson-local-${randomUUID()}`;
@@ -88,62 +85,55 @@ export async function routedCompletion(
   const tier = conversationTier(input.messages, rememberedTier, options.githubAction);
   rememberSessionTier(options.sessionId, tier);
   const preparedMessages =
-    options.reviewRoutes || rememberedRoute || compaction
+    rememberedRoute || compaction
       ? input.messages
       : options.githubAction
         ? prepareGithubActionMessages(input.messages)
         : prepareOpenCodeMessages(input.messages);
-  const routes = options.reviewRoutes ?? sessionModelRoutes(tier, options.sessionId);
+  const routes = sessionModelRoutes(tier, options.sessionId);
   let selectedRoute = "";
-  const model = guardedModel(
-    routes,
-    options.ledger ?? budgetLedger(),
-    async (route) => ({
-      async getResponse(request) {
-        const settings = providerSettings(route.provider, route.model);
-        const {
-          stream_options: _streamOptions,
-          max_completion_tokens: _maxCompletion,
-          ...body
-        } = JSON.parse(String(request.input)) as CompletionInput;
-        selectedRoute = `${route.provider}:${settings.model}`;
-        (options.log ?? console.info)(`Local API tier: ${tier}; route: ${selectedRoute}`);
-        const messages =
-          route.provider === "opencode"
-            ? body.messages.map((message) =>
-                message.role === "developer" ? { ...message, role: "system" as const } : message,
-              )
-            : body.messages;
-        const completion = await (options.transport ?? transport)(
-          route,
-          {
-            ...body,
-            messages,
-            model: settings.model,
-            stream: false,
-            max_tokens: request.modelSettings.maxTokens,
-          } as OpenAI.ChatCompletionCreateParamsNonStreaming,
-          options.sessionId,
-        );
-        rememberSessionRoute(options.sessionId, route);
-        return {
-          output: [],
-          usage: new Usage({
-            requests: 1,
-            inputTokens: completion.usage?.prompt_tokens ?? 0,
-            outputTokens: completion.usage?.completion_tokens ?? 0,
-          }),
-          providerData: { completion },
-        };
-      },
-      async *getStreamedResponse() {
-        throw new Error("Provider streaming is disabled.");
-      },
-    }),
-    undefined,
-    undefined,
-    options.failover,
-  );
+  const model = guardedModel(routes, options.ledger ?? budgetLedger(), async (route) => ({
+    async getResponse(request) {
+      const settings = providerSettings(route.provider, route.model);
+      const {
+        stream_options: _streamOptions,
+        max_completion_tokens: _maxCompletion,
+        ...body
+      } = JSON.parse(String(request.input)) as CompletionInput;
+      selectedRoute = `${route.provider}:${settings.model}`;
+      (options.log ?? console.info)(`Local API tier: ${tier}; route: ${selectedRoute}`);
+      const messages =
+        route.provider === "opencode"
+          ? body.messages.map((message) =>
+              message.role === "developer" ? { ...message, role: "system" as const } : message,
+            )
+          : body.messages;
+      const completion = await (options.transport ?? transport)(
+        route,
+        {
+          ...body,
+          messages,
+          model: settings.model,
+          stream: false,
+          max_tokens: request.modelSettings.maxTokens,
+        } as OpenAI.ChatCompletionCreateParamsNonStreaming,
+        options.sessionId,
+      );
+      rememberSessionRoute(options.sessionId, route);
+      return {
+        output: [],
+        usage: new Usage({
+          requests: 1,
+          inputTokens: completion.usage?.prompt_tokens ?? 0,
+          outputTokens: completion.usage?.completion_tokens ?? 0,
+        }),
+        providerData: { completion },
+      };
+    },
+    async *getStreamedResponse() {
+      throw new Error("Provider streaming is disabled.");
+    },
+  }));
   const preparedInput: CompletionInput = { ...input, messages: preparedMessages };
   const request: ModelRequest = {
     input: JSON.stringify(preparedInput),

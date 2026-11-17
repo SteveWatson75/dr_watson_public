@@ -1,385 +1,65 @@
-# Bounded GitHub PR reviews
+# Advisory GitHub review
 
-## Confirmed audit (16 November 2026)
+One job runs OpenCode V2 through the existing Dr Watson loopback API and posts its
+final text with `gh pr comment`. There is no custom inference wrapper, context
+manifest, result artifact, verdict validator, approval eligibility or AI merge gate.
 
-PR #5 merged at `482a2e9`; historical `docs/evaluations/` evidence is unchanged.
+## Events and inspection
 
-- [Run 43849477245](https://github.com/SteveWatson75/dr_watson_public/actions/runs/43849477245)
-  read evaluation JSON repeatedly (including offsets 200, 3680 and 3200 of `cheap.json`).
-  Logs show main-agent steps 0–7 followed by a summary request. The published comment said
-  **“no review verdict was written yet”**. There were no formal GitHub reviews on PR #5.
-- [Run 43855026262](https://github.com/SteveWatson75/dr_watson_public/actions/runs/43855026262)
-  shows 16 file reads, steps 0–3, a retry after HTTP 502, then another summary request.
-  It timed out after ten minutes, yet the job conclusion was success (`continue-on-error`).
-  The error reported missing Anthropic credentials and unavailable local Ollama.
-- Old preparation supplied whitespace-joined filenames, not bounded diffs; it compared
-  fetched base against the merge checkout rather than binding review content to the head SHA.
-  Prompt-only tool restrictions did not stop reads. No deterministic verdict validation existed.
-- Generic review detection selects `hard`, whose first route is DeepSeek V4 Pro; every provider
-  request has a 60-second SDK timeout, no SDK retries, and broad deterministic failover.
-  OpenCode can additionally retry the local API and request summaries. Router logs were not
-  surfaced, so exact upstream models, attempt counts and Go error categories in those runs
-  **cannot be confirmed** from the available action logs. Visible agent steps are not a count
-  of all provider attempts.
+`pull_request_target` events `opened`, `synchronize`, `reopened` and
+`ready_for_review` review non-draft, owner-authored, same-repository PRs targeting
+main. Drafts and forks do not run. Only the trusted base SHA is checked out; npm
+lifecycle scripts are disabled. The head is fetched into Git, not checked out.
+OpenCode reads the description, full Git diff and relevant base/head source using
+its normal tools. PR configuration, plugins and test code are not executed.
 
-Suspected, not proven: growing raw-data context contributed to provider delays; a specific
-Go failure caused that run's fallthrough. Separate evaluation evidence records a DeepSeek
-V4 Pro timeout, but does not prove the same failure caused every review timeout.
+There is no fixed 20 KB excerpt or complete-coverage certification. Normal tool
+output/context limits still apply. The prompt requests actionable findings with
+file/line references and impact, important inspection limitations, manual QA and
+the reviewed SHA. No findings does not mean approval.
 
-- [Run 43890950771](https://github.com/SteveWatson75/dr_watson_public/actions/runs/43890950771)
-  (PR #11) correctly failed closed as **Incomplete** but selected evidence poorly: the
-  old alphabetical non-Markdown sort supplied `src/ceo-context.test.ts` and part of
-  `src/conversation-observability.test.ts` before the production files
-  `src/provider.ts`, `src/conversation.ts`, `src/memory.ts` and `src/stats.ts`, and the
-  20,000-byte budget expired first. Deterministic priority selection and two-pass
-  allocation (below) fix the ordering; the fail-closed **Incomplete** behavior is
-  unchanged.
+## Permissions and limits
 
-## Reliability audit (17 November 2026)
+- Contents/PR **read**, Issues **write** for comments. No PAT, Contents write,
+  PR write, formal approval or merge operation.
+- OpenCode gets no GitHub token or upstream key. A final trusted `gh` step gets
+  `GITHUB_TOKEN`. The same job owns that limited token; this is not process isolation.
+- Native OpenCode configuration denies tools except reads/searches and Git
+  diff/show. PR text, code, comments and instructions are untrusted review data.
+  These controls limit operations, not the reliability of the model's judgment.
+- Fifteen-minute job, ten-minute model step, 30 native model steps, one active
+  run per PR. Zero-dollar router budgets block paid fallback, not Go allowance use;
+  keep Extra Usage off. Approved routes/privacy checks remain shared with local use.
+- Raw JSONL/model/router logs stay on the ephemeral runner, not in comments or
+  uploaded artifacts. Only the final review text is published. Do not commit secrets:
+  source can reach the provider and appear in model output.
 
-These are distinct failure classes, not one recurring provider failure:
+The legacy OpenCode GitHub action can publish with Issues write and read-only
+Contents/PR permissions, but invokes `opencode github run`, which V2 does not
+provide. Native V2 `opencode run` plus one `gh` command avoids that legacy client
+without recreating a review service. Both implementation and review use the pinned
+V2 CLI and existing project provider configuration.
 
-| Runs | Evidence | Classification |
-| --- | --- | --- |
-| `43903849953`, `43907480204`, `43912497002`, `43914200441`, `43918034695`, `43921074076`, `43923089401` | Actions reports `startup_failure`; all seven have zero jobs. The first/last run-page annotations explicitly identify GitHub's scheduled public-repository `pull_request_target` brownout ending 16 November at 18:00 UTC. | GitHub event-policy startup block, before collection or model execution. |
-| `43896092373`, `43898047536` (PR #12) | Published diagnostics show two ~60-second Go attempts, both `transport`, `modelSuccess: false`, successful client and publication. | Actual provider execution failures; logs do not prove a more specific upstream cause. |
-| `43890950771` (PR #11) | Successful model/client/publication, two included files, nine exclusions, partial scope. | Coverage limitation (historical selection problem described above), not transport failure. |
-| `44047761206` (PR #19) | Both job logs and downloaded result artifact confirm one successful MiMo Pro call (39,995 ms; 5,993 input / 1,212 output tokens), successful artifact transfer and COMMENT publication. `fullScope: false`, `humanRequired: true`, 34 included paths, 65 exclusion entries, 20,000 context bytes, `Incomplete`, zero findings. | Honest incomplete verdict due to bounded coverage and mandatory inspection, incorrectly presented as publication/execution failure by unconditional `Incomplete` exit code 1. |
+## Deployment and live smoke tests
 
-The workflow is now explicitly **collect → analyze → current-run artifact → publish
-(`review-execution`) → `review-integrity` / `review-policy`**. The first two phases use trusted base code
-and read-only GitHub access. Publication uses the same trusted base, strict artifact
-and finding validation, live head/base revalidation, and a deterministic COMMENT
-write. Only a fixed `approved=true/false` output reaches the credential-free policy
-job; model text never becomes a workflow expression, command or GitHub operation.
+Keep standard CI required as appropriate; **do not require AI review**. If branch
+rules still require retired `analyze`, `publish`, `review-execution`,
+`review-integrity` or `review-policy` checks, the owner must remove those AI check
+requirements. Do not weaken independent CI or human protections. Workflows do not
+change repository settings automatically.
 
-| Result | `review-execution` | `review-integrity` | `review-policy` |
-| --- | --- | --- | --- |
-| Valid complete Approved, current SHA, successful publication, no human-required path | success | success | success (advisory result only, not merge approval) |
-| Valid blocking findings, including partial scope | success | success | failure |
-| Valid Incomplete, omitted required code, or mandatory human inspection | success | success | failure |
-| Invalid/missing artifact or verdict, failed client/provider, stale SHA, publication failure | failure | failure | failure |
-| Analysis/publication skipped, cancelled, failed or missing | not successful or absent | failure if the integrity job runs; otherwise no passing integrity check | failure if the policy job runs; otherwise no passing policy check |
+Offline checks cannot verify GitHub permissions, provider availability or useful
+live findings. With explicit owner authorization after merge:
 
-`analyze` now also fails on actual client/provider/invalid-output execution failures,
-**after** writing safe diagnostics for the always-run artifact upload. A syntactically
-valid model `Incomplete` is not such a failure. `verdictValid` distinguishes invalid/
-truncated model output from a valid limited verdict; the publisher independently
-revalidates the artifact. Coverage completeness and mandatory human inspection are
-independent fields: even complete supplied guardrail hunks cannot receive Approved.
-Validated findings accompanying Incomplete are retained as a narrower blocking
-verdict; they never establish complete coverage.
+1. Apply `agent:implement` to a small test issue as owner. Check that tests/typecheck
+   run and the created PR is **draft**, with summary, actual checks and manual QA.
+   Confirm no review starts while it is draft and follow-on deterministic CI runs.
+2. Mark that PR ready. Confirm one advisory comment identifies the head, concrete
+   findings (use a harmless known bug), limitations and manual QA; no approval,
+   branch push, file change or merge occurs. Inspect the job's reported token scopes.
+3. Push a follow-up commit and confirm a new review; reopen to verify that trigger.
+   An older comment may remain: compare its SHA with the current head.
+4. Check that a non-owner label, draft PR and fork do not start these agents.
+   On timeout/provider failure, expect a failed run without a fabricated review.
 
-### Required-check deployment and neutral conclusions
-
-[GitHub accepts successful, skipped **and neutral** required checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging).
-Therefore a neutral incomplete check alone would silently satisfy a required
-security gate. Writing custom conclusions through the [Checks API](https://docs.github.com/en/rest/checks/runs#create-a-check-run)
-would also require Checks write access. Neither is necessary: native Actions jobs
-provide separate execution and fail-closed policy checks, with **no additional
-write permissions**. The policy job always evaluates dependency results and fails
-for skipped/missing results rather than itself skipping. It has no checkout,
-dependencies, provider secret or token permissions.
-
-**Owner action after inspecting/merging this policy:** configure the native rulesets
-below in Settings → Rules → Rulesets. Do **not** use `analyze` or `review-execution`
-alone as the review-integrity gate: either can skip, and GitHub accepts skipped
-required checks. `review-integrity` always checks that **both** dependencies actually
-succeeded; it has no credentials, checkout, approval input or exception mechanism.
-The old
-`publish` display name is deliberately retired so an existing required `publish`
-context cannot silently become passing for Incomplete; replace that requirement
-with the integrity/policy requirements below, not with the execution check. At audit time the main
-protection API returned “Branch not protected” and the rulesets API returned no
-rulesets. This PR does not change repository settings or claim an enforced merge
-gate exists.
-
-#### Native owner exception, not AI approval
-
-Use **two active branch rulesets targeting `main`**. GitHub
-[aggregates all applicable rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets#about-rule-layering);
-bypass of one ruleset does not remove the other's requirements.
-
-| Ruleset | Required protections | Bypass list |
-| --- | --- | --- |
-| Baseline (never bypass for an AI-policy exception) | Require PR; at least one independent approving review; dismiss stale approvals; require approval of the most recent reviewable push; require `typecheck` and `review-integrity` from GitHub Actions, with branches up to date before merging. Preserve existing stronger protections. | **Empty, including owner/admins, apps and bots.** |
-| AI policy | Require `review-policy` from GitHub Actions. Put **only** this requirement in this ruleset. | Explicitly authorized owner role/team only, **For pull requests only**. No workflow token/app, general write role or always/direct-push bypass. |
-
-GitHub documents [PR-only bypass](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository#granting-bypass-permissions-for-your-branch-or-tag-ruleset)
-as a native PR/audit trail, and [authors cannot approve their own PRs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/approving-a-pull-request-with-required-reviews).
-An owner-authored change therefore still needs another qualified human reviewer;
-an owner-only CODEOWNERS entry or a bot acting for the author is not a substitute.
-If no independent qualified reviewer is available, the merge remains blocked.
-Never give the owner an exception to the baseline's approval or integrity rules.
-
-After independent review of the **current** change (including omitted code and any
-findings), the authorized owner may explicitly use GitHub's PR-only bypass of the
-**AI-policy ruleset only**. Record the decision, inspected head/base/run, reviewer,
-scope and rationale on the PR. Such a comment is an audit record, **not** an
-exception command consumed by this workflow. `approved=false`, the original
-Incomplete/blocking COMMENT and failed `review-policy` remain unchanged. Human
-approval is merge authorization under repository policy, never automated AI
-approval. Failed/missing/stale/invalid analysis or publication still fails the
-non-bypassable `review-integrity`, irrespective of owner bypass or human approval.
-
-**Limits:** native bypass is scoped to a ruleset/actor, **not** to `humanRequired`
-or a particular model verdict. It can waive the AI-policy requirement for any
-otherwise valid review, including blocking or coverage-limited verdicts; that
-human discretion must be explicitly acceptable to the owner. It cannot waive
-integrity/CI/independent approval with the separate baseline above. Roles may be
-broader than a named owner (e.g. repository administrators); only use a role/team
-whose entire membership is authorized. Do not grant broader authority just because
-the desired identity is unavailable in the UI.
-
-If this scoped native setup is unavailable, or policy requires a machine-enforced
-**human-required-only** exception, retain `review-policy` in the non-bypassable
-baseline and accept that such merges remain blocked. Ordinary approval alone
-cannot override a required failed check. The current permission/event model has
-**no safe automatic exception**: do not add a label, PR-text command, author
-self-approval, model field, PAT, bot approval or blanket administrator bypass.
-Changing that limitation would need a separately reviewed policy design, not a
-silent privilege expansion. As with any repository policy, administrators able to
-edit rulesets remain trusted; these instructions do not prevent administrative
-reconfiguration.
-
-The historical brownout is separate: if a future startup annotation reports an
-event-policy block, an administrator must inspect the applicable Actions event
-policy and explicitly allow the trusted-base workflow if appropriate. Do not
-switch to PR-head execution, broaden tokens, or claim a code fix resolves a
-platform policy block.
-
-### Large/formatting-heavy PRs
-
-Coverage handling now reports mandatory inspection independently of truncation and
-labels included paths as **supplied hunks**, not fully inspected files. Omissions
-remain explicit and prevent approval under the existing required-scope rules.
-Oversized comments abbreviate only the inventory, never findings or the verdict;
-the complete inventory stays in the summary/artifact. Split mechanical formatting
-from functional changes, or inspect omitted code directly.
-
-No formatting is inferred from PR claims, whitespace-normalized code, or model
-assertions. No omitted code is silently approved. Multi-part inference is not
-introduced: PR #19 exhausted the source budget across many files and also required
-human inspection regardless of extra model coverage. More calls cannot remove
-that policy requirement; there is no demonstrated reliability gain sufficient to
-justify increased inference/timeout exposure here. Context, per-file, request,
-fallback, output, deadline, privacy and zero-dollar limits are unchanged.
-
-PR #19 merged at `f4a11da` before this branch was created. Standard `ci.yml` now
-runs its existing `npm run format:check` immediately after `npm ci`, without
-formatting/writing/committing files, without changed permissions, and never through
-Agent review. Offline tests invoke the actual script on formatted/misformatted
-temporary source and verify that failure does not rewrite the source.
-
-## Input and execution
-
-`agent-review.yml` runs trusted **main/base** code via `pull_request_target`; it never checks
-out the head. Owner/same-repository/non-draft/main-target restrictions remain enforced.
-`github-review-cli.ts collect` checks the event head/base SHA before and after paginated
-GitHub PR-file reads. At most 1,000 files and 2 MB per API response; malformed, duplicate,
-unsafe-path or incomplete file inventories fail closed. CI check status is optional, sampled
-at the reviewed SHA; CI is not executed or treated as an approval gate here.
-
-`github-review.ts` prepares PR title/body, statuses, rename paths and available diff hunks:
-
-- Evidence is selected in deterministic priority order so production changes reach the
-  model before optional material (ties break by path):
-  **0 — security-sensitive configuration and guardrails**: `.github/`, `.opencode/`,
-  `opencode.json(c)`, `AGENTS.md`, `CODEOWNERS`, `config/`, `src/github-review*`,
-  `src/model-policy*`, `src/provider*`, `src/local-api*`, the reorganized
-  `src/providers/`, `src/github/github-review*`, `src/routing/provider-chain*`,
-  and any file named for
-  auth/authorization/permission/privacy/secret/credential/security/guardrail/policy,
-  including security-policy documents.
-  **1 — production implementation and runtime configuration**: all remaining source,
-  scripts and config (`package.json`, Dockerfiles, unrecognized extensions). Unknown
-  file types are required content that fails closed, never silently ignored.
-  **2 — tests and fixtures**: `*.test.*`, `*.spec.*`, `test(s)/`, `__tests__/`, `e2e/`,
-  fixture-named files and directories.
-  **3 — documentation and prose**: `*.md`/`*.mdx`, README/LICENSE/CHANGELOG/
-  CONTRIBUTING, `docs/**` (security-policy documents remain priority 0).
-  Priority only allocates the fixed budget; it is not a trust decision. Untrusted PR
-  text and filenames cannot create coverage: human-inspection flags, line validation
-  and fail-closed verdict rules are unchanged.
-- Allocation is two-pass within the unchanged limits. Pass 1 gives every changed
-  priority 0/1 file a bounded share (remaining bytes divided across the files not yet
-  served, capped by the per-file limit) so one early large file cannot consume the
-  whole budget before required changes are seen. Pass 2 spends what remains on further
-  implementation hunks, then tests, then documentation. Total prepared evidence
-  **20,000 UTF-8 bytes**, per-file **16,000 bytes**, Markdown **4,000 bytes**. Title/body/CI are capped at
-  1,000/4,000/2,000 characters. Within the advertised **32,768-token context**, reserve **8,192
-  output tokens**, leaving a **24,576-token input budget**. Conservatively bound input using
-  evidence UTF-8 bytes plus policy bytes and 2,048 envelope tokens, checked before invocation.
-  No average-tokenization or “characters / 4” assumption.
-- Partial coverage is explicit. The manifest records only the line references actually
-  supplied, and every file cut short by the budget or its per-file limit gets a
-  `context budget: remaining hunks omitted (<priority class>)` entry. A file with
-  omitted hunks is never described as fully inspected; any omitted non-Markdown hunk
-  marks coverage partial and forbids **Approved**. When the budget cannot cover all
-  required implementation changes the review returns **Incomplete**; a validated
-  blocking finding over supplied hunks remains a valid narrower verdict. Omitted
-  entries name exactly what a human must inspect directly in the PR diff before
-  relying on the review. Exclusions and omitted-hunk markers are never dropped to
-  improve a result.
-- Exclude raw `docs/evaluations/*.json` and benchmark/observation JSON, generated/minified/build
-  content, observation/snapshot data, oversized non-config JSON, `.env`/credential/key files and lockfiles. Binary/unavailable patches cannot be
-  inspected. Exclusions and omitted hunks are listed with reasons; nothing is deleted.
-- Missing/truncated material source, context overflow, sensitive files, or lockfiles alongside
-  dependency-manifest changes prevent approval. Documentation is optional and omissions are
-  disclosed. Every priority 0 file additionally requires human inspection and can never receive
-  an automated **Approved** verdict: this preserves the historical workflow/review-policy/
-  config/guardrail path set and extends it to security-sensitive non-test files such as
-  `SECURITY.md`, `src/auth.ts` and `docs/security-policy.md`. Test-only changes stay
-  test-classified (priority 2); only the historical guardrail-module test paths
-  (`src/github-review*`, `src/model-policy*`, `src/provider*`, `src/local-api*`,
-  plus `src/providers/`, `src/github/github-review*` and `src/routing/provider-chain*`) keep their
-  existing human-inspection requirement.
-- New-side added/context and old-side deleted line references survive hunk selection. Coverage means the **intended selected diff
-  scope**, not full repository correctness or inspection of excluded evidence.
-
-OpenCode **2.0.30** runs one agent step from an isolated temporary directory/home with all tools
-denied. Its only provider is the local restricted Dr Watson API on an ephemeral loopback port.
-The API supplies policy/context itself, ignores client instructions, sends no tools, and caches
-one invocation promise: retries/maintenance requests cannot create more review rounds.
-No linked issues, comments, web content or additional repository files are fetched by the model.
-
-Review-specific deterministic routes: **MiMo V2.6 Pro → Kimi K2.7 Code**, existing approved
-catalogue models with successful coding/tool evaluation evidence. This is a bounded review
-policy, not a quality-based promotion of generic production tiers. Require reviewed
-`training=not-used`, no block and unexpired privacy approval immediately before invocation.
-The fixed Go endpoint, existing privacy guard/budget ledger, zero-dollar workflow limits,
-8,192 output tokens and zero SDK retries apply. No paid/provider/Ollama fallback or dynamic routing.
-Only transient timeouts, rate limits and selected availability statuses permit the second model;
-existing narrowly matched Go model/endpoint-unavailable 400/422 errors also permit failover.
-Other invalid/auth/policy errors stop immediately. Go cooldown behavior is retained.
-
-Deadlines: **60 seconds per upstream request**, **150 seconds overall client review** (abort
-upstream and kill client process group), **3 minutes review step**, **8 minutes analysis job**.
-A separate **4-minute publication job** has no model/provider credential. Do not increase all
-timeouts to diagnose failures.
-
-## Verdict and publication
-
-Require exactly one JSON result: `sha`, `outcome`, `findings`, `manualQA`, `reason`.
-Only outcomes:
-
-- **Approved** — no blocking findings and required intended coverage completed.
-- **Has blocking changes needed** — at least one concrete defect with file, explicit `side`
-  (`new` for added/context lines, `old` only for deleted lines), inspected line, defect description
-  and blocking impact. Deletion-only hunks and removed files can use old-side locations.
-- **Incomplete** — invalid/missing/truncated output, timeout/failure, policy/budget unavailability,
-  incomplete required coverage, stale SHA, or missing/failed client invocation.
-
-Reject unknown fields, unauthorized paths/lines, >16 KB output, wrong SHA and inconsistent
-outcome/findings. Publisher revalidates the artifact, invocation diagnostics and current head/base.
-Missing/wrong sides, unrelated old lines and omitted deletion locations are invalid: Incomplete,
-never approval. Published findings label their side; old-side lines refer to the inspected base.
-Reports include inspected/excluded material, remaining manual QA and one final outcome, rendered
-as escaped plain text plus a deterministic outcome heading.
-If a comment would exceed 60 KB, preserve the verdict/findings with an explicitly abbreviated inventory;
-the full filename/reason inventory remains in the job summary and result artifact.
-
-Every publication is a GitHub **COMMENT**, tied to the inspected commit, not an actual GitHub
-approval. Incomplete is a valid, honest result: it records that the bounded evidence was
-insufficient instead of guessing, and it never implies the PR is safe. Valid Incomplete is
-published where possible without failing `review-execution`, but always fails `review-policy`.
-Blocking findings also fail `review-policy`, even with incomplete coverage.
-Analysis/job execution success,
-model invocation success, review completion and review approval are separate facts.
-Repository settings must permit `GITHUB_TOKEN` review publication; failures never fall back to a PAT.
-
-## Diagnostics and investigation
-
-Job summary contains the report and allowlisted JSON; seven-day `bounded-review-result` artifact
-contains only the result, coverage manifest and diagnostics. No raw prompt, provider body or client
-logs. Fields include PR/SHA, included/excluded counts, context bytes, conservative token upper
-bound, `requestCount`, `fallbackAttempts`, provider/model, duration, safe category/status, token
-usage when supplied, `modelSuccess`, `cliSuccess`, `reviewComplete`, `reviewApproved`, `fullScope`.
-`verdictValid`, `humanRequired`, `executionSuccess` and allowlisted `executionError` distinguish
-valid verdicts, human policy requirements and failed execution.
-`publicationSuccess` and a safe GitHub HTTP status distinguish publication failures; missing
-execution artifacts report unknown request counts (`null`), never an invented successful call.
-
-Example (synthetic local live smoke, no GitHub publication):
-
-```json
-{"route":"opencode:mimo-v2.6-pro","requestCount":1,"fallbackAttempts":0,
- "durationMs":11369,"inputTokens":332,"outputTokens":440,
- "outcome":"Has blocking changes needed","modelSuccess":true,"cliSuccess":true}
-```
-
-1. Check **review-integrity**, **review-policy**, **review-execution**, the final verdict and safe execution diagnostics,
-   not just analysis success. A policy failure alone is not an infrastructure failure.
-2. For missing artifact, identify the failed prepare/install/analyze step; publisher records
-   Incomplete. For missing comment, check GitHub permissions/outage/cancellation first.
-3. Inspect safe attempt categories: `timeout`, `rate_limit`, `upstream`, `invalid_or_policy`,
-   `transport`. Check Go availability/allowance, reviewed privacy metadata/expiry and zero-budget
-   configuration. Never enable Extra Usage or broader PAT scopes as an automatic workaround.
-4. Review coverage omissions and manual QA. After head/base moves, rerun against current SHAs.
-   Canceled/superseded runs may not publish; absence never implies approval.
-
-## Validation and manual QA
-
-Routine tests use mocked responses, including a synthetic URL-to-`execSync` command-injection
-defect carried through finding validation and final publication format. No CI API charges.
-Local smoke with real pinned OpenCode and mocked upstream: one attempt, validated Approved.
-Controlled synthetic **live Go** local smoke: one MiMo Pro request, 11.369 seconds, 332 input /
-440 output tokens, one blocking command-injection finding; zero-dollar limits, no publication.
-This was not a GitHub-hosted workflow smoke or a production-quality evaluation.
-
-Before merging: inspect trusted checkout, token separation, no head execution and no evidence
-changes; run typecheck/tests/diff-check. After a human merges this policy, use a small owner PR
-with an obvious synthetic correctness defect, mark ready, confirm SHA-bound COMMENT/diagnostics,
-then try a data-heavy PR and verify exclusions. The draft cannot safely exercise its own new
-`pull_request_target` policy before it reaches trusted main. Do not merge just to test it.
-Manually verify Go Extra Usage remains off and repository token-review settings.
-
-For this reliability fix, before merge run `npm run format:check`, `npm run typecheck`,
-`npm test` and `git diff --check`. Mocked tests cover the loopback analysis/artifact
-handoff (including cached retries), complete approval, partial/human-required
-Incomplete, findings with omitted code, invalid artifacts/locations/diagnostics,
-provider/client/invalid-output failures, publication errors and stale head/base.
-The policy tests execute the actual workflow shell for success/failure/skipped/
-cancelled/missing dependency results; no live inference or GitHub writes occur.
-
-After owner merge, validate on **new small owner PRs**, not by altering PR #19:
-
-First inspect the two native rulesets above. The baseline must have no bypass
-actors and must require current independent approval, CI and `review-integrity`.
-Keep `review-policy` required in the separate AI-policy ruleset.
-
-1. A non-security one-file change should yield a SHA-bound COMMENT and both execution/
-   policy success only if the model returns a valid complete Approved verdict.
-2. A deliberately obvious correctness defect should publish actionable findings;
-   execution succeeds, policy fails. Do not merge the defect.
-3. A large formatting-heavy change should disclose omitted paths and remain
-   Incomplete (or blocking if findings exist); execution succeeds, policy fails.
-4. A tiny `src/local-api`/workflow change must report mandatory human inspection
-   and fail policy even if all hunks fit. No COMMENT may become GitHub APPROVE.
-5. Confirm invalid-output/provider/client failures fail analysis/execution with a
-   retained diagnostic artifact; head/base movement fails stale publication.
-   Prefer the mocked fault tests over deliberately exhausting live provider calls
-   or changing production credentials/settings.
-6. Confirm standard CI rejects a deliberately misformatted temporary PR commit,
-   then passes after **local** formatting; CI itself must never change files.
-7. Before enabling owner exceptions, verify native enforcement in the merge box:
-   owner-authored PR with no independent approval → blocked; human-required PR with
-   valid integrity, fresh independent approval and an authorized PR-only AI-policy
-   bypass → eligible under repository policy, with AI verdict/check still unchanged;
-   unauthorized bypass → blocked; failed/skipped/missing/stale/invalid review →
-   blocked **even with owner bypass and human approval**. A new head/base must
-   satisfy current checks/up-to-date and stale-approval rules again. These native
-   settings must be inspected manually; offline tests cannot prove live ruleset
-   configuration. Do not bypass baseline rules or weaken settings to make QA pass.
-
-Live hosted verification requires owner-authorized inference and trusted main;
-local mocked coverage is not a claim that the new hosted workflow has run.
-
-Known limits: this remains a bounded, diff-based, advisory review, not a comprehensive
-code review. Diff-only review lacks unchanged-file context; GitHub patch truncation and
-large source changes produce partial coverage; under the fixed budget large
-test/documentation patches are truncated or entirely omitted even when production
-evidence is complete; redaction is heuristic; optional CI snapshots can be
-incomplete. Model quality/injection resistance is not guaranteed. Runner/API/installation failures
-can prevent even Incomplete publication. Human review and CI remain mandatory independent gates.
-See [SECURITY.md](../../SECURITY.md#github-pr-review-trust-boundaries).
+See [security boundaries](../../SECURITY.md#github-agent-trust-boundaries).

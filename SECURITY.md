@@ -48,64 +48,45 @@ We will acknowledge receipt and work with you on a fix and disclosure timeline.
   Keep GitHub Actions overage hard-stopped and use standard Ubuntu runners.
 - Human review is required for security-sensitive paths and guardrails (including
   `.github/`, `.opencode/`, `AGENTS.md`, `opencode.json(c)`, `config/`, provider,
-  routing-provider-chain, local-API and reviewer modules, and security-policy documents).
-  CI, advisory agent review and human QA are separate gates. Agents never merge
+  routing-provider-chain and local-API modules, and security-policy documents).
+  CI, advisory agent review and human QA are independent. Agents never merge
   their own PRs; missing review output is not approval.
 
-## GitHub PR review trust boundaries
+## GitHub agent trust boundaries
 
-Implemented controls:
+- **Implementation:** an owner-applied `agent:implement` issue label starts OpenCode V2
+  on the default branch. It can edit and run tests. A subsequent shell step commits,
+  pushes and creates an explicitly draft PR. The built-in token has Contents/Issues
+  read access; `OPENCODE_GH_TOKEN` is exposed only to that publication step.
+  Use a fine-grained PAT limited to this repository with Contents/Issues/PR read/write,
+  no workflow, secrets or administration permissions. Actual secret scopes must be
+  checked by the owner. These write scopes do **not** technically prevent merging.
+- **Review:** `pull_request_target` handles opened/updated/reopened/ready non-draft,
+  same-repository, owner-authored PRs targeting main. Only the trusted base is checked
+  out and installed, with lifecycle scripts disabled. PR Git objects are fetched as
+  data, never checked out. The built-in token has Contents/PR read and Issues write
+  for advisory comments, not Contents/PR write, approval or merge permissions.
+  No PAT is used. OpenCode has reads/searches and a narrow Git diff/show shell allowlist;
+  edits, arbitrary shell, network tools and delegation are denied by configuration.
+  Its process receives neither a GitHub token nor the upstream provider key.
+- Both prompts treat issue/PR descriptions, source and comments as untrusted data,
+  not permission to change the task. Implementation must not deliberately merge,
+  approve its own work, change secrets or alter security settings. These instructions
+  are not a sandbox. The existing owner `/opencode`/`/oc` follow-up workflow remains
+  a write-capable legacy action with PAT access, and carries implementation-level risk.
+- `OPENCODE_API_KEY` is supplied to the local router startup step, not OpenCode.
+  Both agents use existing routing, privacy checks and zero-dollar cash limits.
+  Timeouts and native step limits bound runs, not subscription token consumption.
+  Keep Go Extra Usage off. Source/context is sent to the selected hosted provider.
+  No raw router/model logs, credentials or environment dumps are published; model
+  output is still untrusted and comments are not guaranteed free of sensitive source.
+- Trusted base code, dependencies, OpenCode and GitHub runners remain trusted.
+  Tool permissions and step-local credential exposure are not OS/process isolation.
+  Prompt injection can still distort findings, induce undesirable local operations,
+  or affect an implementation. Implementation is riskier because it executes tests
+  and publishes code with a write-capable PAT. Never commit secrets.
+- Review is advisory, may be incomplete or stale, and can fail to publish. It is not
+  an approval or required merge check. Standard CI remains independent. A human
+  inspects the diff, checks, limitations and manual QA before deciding to merge.
 
-- `pull_request_target` runs **only the trusted main/base SHA**, never the PR checkout.
-  Same-repository, owner-authored, non-draft PRs targeting main only; forks cannot enter analysis.
-  PR title/body, API metadata, source, comments, docs, CI labels and model output are untrusted.
-  No PR code, install hooks, scripts, symlinks, plugins or configuration are executed or loaded.
-- Deterministic GitHub API reads provide bounded diff text; paths/encoding/schema/size are
-  checked. Filenames never enter shell commands. There is no head filesystem to traverse.
-  Sensitive files are excluded, configured keys and common credential patterns redacted.
-- OpenCode V2 runs from an empty temporary location with an isolated home and a whitelisted
-  environment: no provider key, GitHub credential, or Actions runtime token. All tools denied;
-  one agent step. The local API ignores client prompts/policy/tools and supplies the trusted
-  review policy and sanitized evidence itself. Upstream requests have **no tools**; tool-call
-  responses are rejected. There is no tool dispatcher or model-driven GitHub operation.
-- Analysis has contents/PR/checks read permissions. Publication has contents read and PR write,
-  but no provider key and no LLM process. Checkout credentials are not persisted. Neither uses
-  the old PAT (`OPENCODE_GH_TOKEN`), whose configured Contents/Issues/PR write access exceeds
-  reviewer needs; actual secret scopes cannot be verified from repository code.
-- Strict output schema rejects commands/extra fields, uninspected paths/lines, malformed output,
-  oversized responses and wrong SHAs. Publishing is always a `COMMENT` review with the exact
-  inspected `commit_id`, never `APPROVE`, merge, push or remediation. Head/base are rechecked.
-  Policy/workflow/configuration changes require human review and cannot receive automatic approval.
-- Native Actions `review-integrity` requires successful analysis and validated current-SHA
-  publication; missing/skipped/failed dependencies cannot pass. `review-policy` additionally
-  fails for blocking, incomplete or human-required review. Neither human approval nor model/PR
-  text changes these results. No Checks/status write permission or neutral conclusion is used.
-  To permit native owner exceptions, require integrity, standard CI and current independent
-  human approval in a **no-bypass baseline ruleset**; require AI policy in a separate ruleset
-  with authorized-owner **PR-only** bypass. Authors cannot approve their own PRs. Never bypass
-  the baseline for an AI-policy exception or treat human authorization as AI approval.
-  Without this scoped native setup, keep AI policy non-bypassable and accept blocked merges;
-  see the [limitations and deployment instructions](docs/agents/github-review.md#required-check-deployment-and-neutral-conclusions).
-- Only sanitized result/manifest/allowlisted diagnostics are retained, not prompts, provider
-  bodies, environment dumps or OpenCode logs. Model text is escaped in a plain-text report.
-
-Operational assumptions and limitations:
-
-- Main branch, runner, pinned OpenCode distribution, npm dependencies, GitHub Actions/artifacts
-  and maintainers are trusted. Protect main and workflow changes with human review.
-- Keep Go **Use balance / Extra Usage off**. Zero-dollar ledger limits prevent paid route
-  fallback, but cannot control billing settings in the Go account. No settings are changed here.
-- Credential-pattern redaction is best effort, not a universal secret detector. Do not put
-  credentials in source; rotate any accidentally committed credentials. Unknown sensitive
-  source values may require human inspection. Analysis sends selected public diff text to Go.
-- Permissions/no upstream tools prevent model-requested operations, but this is **not an OS
-  sandbox** and does not make model judgments immune to prompt injection. A manipulated model
-  can miss a defect or request Incomplete; CI and human QA remain independent.
-- Runner termination, cancellation, GitHub outage, installation failure or disabled token review
-  permissions can prevent publication. Missing publication is never approval. Do not fall back
-  to a broader PAT to bypass settings. Current-run artifacts are trusted workflow output, not
-  accepted from PRs or external workflows.
-- Future hardening: dependency/action digest pinning, independent secret scanning, stronger runner
-  egress isolation. These are not implemented guarantees.
-
-See [review operations and troubleshooting](docs/agents/github-review.md).
+See [review operations and smoke tests](docs/agents/github-review.md).
