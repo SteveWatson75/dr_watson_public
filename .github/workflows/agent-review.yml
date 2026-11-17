@@ -100,6 +100,25 @@ jobs:
           REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
         run: node_modules/.bin/tsx src/github/github-review-cli.ts publish "$PR_NUMBER" "$REVIEW_SHA"
 
+  review-integrity:
+    # Non-bypassable prerequisite for any native owner exception to AI policy.
+    # Requiring the publisher alone is unsafe: GitHub accepts skipped checks.
+    if: always()
+    needs: [analyze, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require successful analysis and validated current-SHA publication
+        env:
+          ANALYSIS: ${{ needs.analyze.result }}
+          PUBLICATION: ${{ needs.publish.result }}
+        run: |
+          if [ "$ANALYSIS" != success ] || [ "$PUBLICATION" != success ]; then
+            echo "::error::Review integrity not satisfied: missing, skipped, cancelled, stale, invalid or failed review. Owner policy bypass must not bypass this check."
+            exit 1
+          fi
+
   review-policy:
     # Never skip this gate for a skipped/missing/failed review: GitHub treats
     # skipped and neutral required checks as passing.

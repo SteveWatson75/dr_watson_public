@@ -5,6 +5,40 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 describe("review policy workflow", () => {
+  it("keeps review integrity fail-closed independently of AI verdicts or claimed human exceptions", async () => {
+    const workflow = await readFile(".github/workflows/agent-review.yml", "utf8");
+    const integrity = workflow.split("  review-integrity:\n")[1]!.split("\n  review-policy:")[0]!;
+    expect(integrity).toContain("if: always()");
+    expect(integrity).toContain("needs: [analyze, publish]");
+    expect(integrity).toContain("permissions: {}");
+    expect(integrity).not.toContain("uses:");
+    expect(integrity).not.toContain("APPROVED");
+    const script = integrity
+      .split("        run: |\n")[1]!
+      .split("\n")
+      .map((line) => line.replace(/^ {10}/, ""))
+      .join("\n");
+    for (const analysis of ["success", "failure", "skipped", "cancelled", ""]) {
+      for (const publication of ["success", "failure", "skipped", "cancelled", ""]) {
+        const result = spawnSync("bash", ["-e", "-c", script], {
+          // These claimed approvals have no authority over integrity or AI policy.
+          env: {
+            ANALYSIS: analysis,
+            PUBLICATION: publication,
+            APPROVED: "true",
+            HUMAN_APPROVED: "true",
+            OWNER_EXCEPTION: "true",
+          },
+          encoding: "utf8",
+        });
+        const valid = analysis === "success" && publication === "success";
+        expect(result.status).toBe(valid ? 0 : 1);
+        if (!valid) expect(result.stdout).toContain("Review integrity not satisfied");
+      }
+    }
+    // Approval events/commands are not an alternate entry point or exception source.
+    expect(workflow).not.toMatch(/^\s+(?:pull_request_review|issue_comment|workflow_dispatch):/m);
+  });
   it("fails closed for skipped, cancelled, failed, missing or unapproved execution", async () => {
     const workflow = await readFile(".github/workflows/agent-review.yml", "utf8");
     const policy = workflow.split("  review-policy:\n")[1]!;
@@ -24,7 +58,13 @@ describe("review policy workflow", () => {
       for (const publication of ["success", "failure", "skipped", "cancelled", ""]) {
         for (const approved of ["true", "false", ""]) {
           const result = spawnSync("bash", ["-e", "-c", script], {
-            env: { ANALYSIS: analysis, PUBLICATION: publication, APPROVED: approved },
+            env: {
+              ANALYSIS: analysis,
+              PUBLICATION: publication,
+              APPROVED: approved,
+              HUMAN_APPROVED: "true",
+              OWNER_EXCEPTION: "true",
+            },
             encoding: "utf8",
           });
           const allowed =
