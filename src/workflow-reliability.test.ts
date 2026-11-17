@@ -10,9 +10,9 @@ describe("GitHub agents", () => {
     expect(workflow).toContain("pull_request_target:");
     expect(workflow).toContain("ref: ${{ github.event.pull_request.base.sha }}");
     expect(workflow).toContain("persist-credentials: false");
-    expect(workflow).toContain("contents: read\n  pull-requests: read\n  issues: write");
+    expect(workflow).toContain("contents: read\n  pull-requests: write");
     expect(workflow).not.toContain("OPENCODE_GH_TOKEN");
-    expect(workflow).not.toMatch(/contents: write|pull-requests: write|review-policy:|needs:/);
+    expect(workflow).not.toMatch(/contents: write|issues: write|review-policy:|needs:/);
     const review = workflow
       .split("      - name: Review with OpenCode\n")[1]!
       .split("\n      - name:")[0]!;

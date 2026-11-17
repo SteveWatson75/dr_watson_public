@@ -6,8 +6,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
-  issues: write # Advisory PR comments, not approval or repository writes.
+  pull-requests: write
 
 concurrency:
   group: agent-review-pr-${{ github.event.pull_request.number }}
