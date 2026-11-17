@@ -20,8 +20,8 @@ not another model deciding which model to call.
 - **Routing and providers:** `src/routing/` chooses the task tier;
   `src/providers/` applies the reviewed routes, privacy checks and fallback.
   `src/budget.ts` reserves and records estimated paid usage.
-- **Evaluation and review:** `src/evaluation/` contains the bounded model-evaluation
-  CLI; `src/github/` contains the bounded PR reviewer.
+- **Evaluation:** `src/evaluation/` contains the bounded model-evaluation CLI.
+  GitHub implementation and advisory review use OpenCode directly from workflows.
 
 The built-in specialists provide advice and plans, not autonomous implementation.
 They have no filesystem, shell or deployment tools. Proposed work must not be
@@ -61,7 +61,7 @@ permissions. See [security boundaries and approvals](SECURITY.md#local-operation
 | [`config/evaluation-candidates.json`](config/evaluation-candidates.json) | Runtime privacy restrictions/expiry and evaluation eligibility/allowance metadata; **not** a second approved-route catalogue |
 | [`.env.example`](.env.example) → local `.env` | Supported environment settings; loaded by `src/config.ts` and entry-point consumers, never committed with credentials |
 | [`opencode.json`](opencode.json) | Active OpenCode project provider, virtual model, compaction and maintenance-agent settings; not Dr Watson's upstream route configuration |
-| [`.github/workflows/`](.github/workflows/) and [starter action](.github/actions/start-dr-watson/action.yml) | Active automation, prompts, owner gates and token permissions; reviewer generates its own isolated config |
+| [`.github/workflows/`](.github/workflows/) and [starter action](.github/actions/start-dr-watson/action.yml) | Active automation, prompts, owner gates and token permissions |
 | [`config/legacy-models.json`](config/legacy-models.json) | Frozen, independent regression fixture; tests only, never production configuration |
 
 Owner-specific `.env`, `memory/CEO_CONTEXT.md`, `workspace/` project context and
@@ -165,7 +165,7 @@ New conversations write only planned routing decisions. Historical shadow
 classifications remain in existing databases and `/stats` distributions; no
 shadow classifier runs and no historical rows or schema are removed.
 
-Scope: these tables cover Dr Watson's CLI conversations. The OpenCode local API and the GitHub review workflows do not write them — they keep their own bounded, attempt-level diagnostics — so their calls do not appear in `/stats`.
+Scope: these tables cover Dr Watson's CLI conversations. The OpenCode local API and GitHub workflows do not write them, so their calls do not appear in `/stats`.
 
 Each model request, including specialist and memory calls, reserves a conservative estimate before sending: serialized input bytes plus overhead, and at most 2,048 output tokens. SQLite transactions share reservations between local processes. Successful usage replaces the reservation with estimated token cost. Failed calls, missing usage and interrupted processes keep their reservation because they may have been billed. SDK retries and streaming are disabled. Reservations count in displayed spend and can cause an earlier cutoff. This is a local estimate, not the provider invoice or a limit on usage made outside Dr Watson.
 
@@ -198,8 +198,9 @@ Keep the explicit compaction buffer in the project configuration used by the des
 
 The [dated integration results](docs/opencode-integration.md) retain the historical
 OpenRouter override test; it is not the automatic-routing setup recipe.
-The implementation/owner-comment Actions still inject pinned V1 provider syntax;
-do not copy those overrides into a V2 project configuration.
+The implementation and review workflows use this V2 configuration. The separate
+owner-comment action still injects legacy V1 provider syntax; do not copy that
+override into a V2 project configuration.
 
 OpenCode owns files, terminal commands and tools. Dr Watson forwards supplied text messages, system/developer instructions, function definitions, tool calls and results through the existing router and budget ledger. It adds no chat history, CEO pack or persistent conversation memory. All supplied context is protected: oversized Haiku requests skip to the next route without dropping OpenCode's context. Both `max_tokens` and `max_completion_tokens` are accepted and capped at 2,048. Images/audio, Responses API and multiple completion choices are outside this first version.
 
@@ -241,8 +242,8 @@ model configuration, workflows, documentation or historical evaluation evidence.
 
 The issue → implementation → PR → review → human QA loop is described in
 [`docs/agents/github-agent-loop.md`](docs/agents/github-agent-loop.md).
-The [bounded PR reviewer](docs/agents/github-review.md) uses trusted base-branch preparation,
-OpenCode → a restricted Dr Watson API → deterministic Go routes, and a separate `GITHUB_TOKEN`
-publication job. It does not use `OPENCODE_GH_TOKEN`, inspect raw evaluation JSON, or execute PR code.
-See [security controls and limitations](SECURITY.md#github-pr-review-trust-boundaries).
-Other agent workflows retain their existing starter action and PAT design.
+The [advisory reviewer](docs/agents/github-review.md) runs OpenCode V2 on trusted
+base code through the same Dr Watson router. It inspects fetched PR Git objects
+without checking out PR code; a small `gh` step posts its final comment.
+There are no AI approval or merge gates. See
+[security controls and limitations](SECURITY.md#github-agent-trust-boundaries).

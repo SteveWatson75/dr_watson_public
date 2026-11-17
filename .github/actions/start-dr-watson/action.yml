@@ -14,7 +14,7 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      run: npm ci
+      run: npm ci --ignore-scripts
 
     - name: Start zero-paid-budget API
       shell: bash
@@ -34,5 +34,5 @@ runs:
           sleep 1
         done
 
-        cat "$RUNNER_TEMP/dr-watson.log"
+        echo "::error::Dr Watson API failed to start; raw router logs are not printed."
         exit 1
