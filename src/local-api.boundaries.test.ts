@@ -151,9 +151,8 @@ describe("local API trust boundaries", () => {
     expect(prepared).toEqual([
       {
         role: "developer",
-        content: expect.stringContaining(
-          "Task anchor (original user intent):\nImplement the feature",
-        ),
+        content:
+          "Task anchor (original user intent):\nImplement the feature\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.",
       },
       messages[0],
     ]);

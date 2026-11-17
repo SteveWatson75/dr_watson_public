@@ -17,7 +17,7 @@ function messageText(value: ChatMessage): string {
     : (value.content?.map((part) => part.text).join("\n") ?? "");
 }
 
-function normalized(text: string): string {
+function normalizeUserText(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
@@ -55,9 +55,9 @@ function section(text: string, heading: string): string {
   );
   if (start < 0) return "";
   const body: string[] = [];
-  for (let i = start + 1; i < lines.length; i += 1) {
-    if (/^#{1,3}\s*[A-Za-z]/.test(lines[i]!.trim()) && lines[i]!.trim().length < 80) break;
-    body.push(lines[i]!);
+  for (const line of lines.slice(start + 1)) {
+    if (/^#{1,3}\s*[A-Za-z]/.test(line.trim()) && line.trim().length < 80) break;
+    body.push(line);
   }
   return body.join("\n").trim();
 }
@@ -74,6 +74,13 @@ function summaryTask(text: string): string {
   return [objective && `Objective:\n${objective}`, requirements && `Requirements:\n${requirements}`]
     .filter(Boolean)
     .join("\n\n");
+}
+
+function taskAnchorMessage(anchor: string): ChatMessage {
+  return {
+    role: "developer",
+    content: `Task anchor (original user intent):\n${anchor}\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.`,
+  };
 }
 
 export function prepareOpenCodeMessages(
@@ -101,15 +108,12 @@ export function prepareOpenCodeMessages(
     if (stateSummary && !(item.role === "assistant" && item.tool_calls?.length)) continue;
     if (item.role === "user") {
       if (continuationOnly.test(text.trim())) continue;
-      const key = normalized(text);
+      const key = normalizeUserText(text);
       if (seenUsers.has(key)) continue;
       seenUsers.add(key);
     }
     if (!injectedAnchor && anchor && item.role !== "system" && item.role !== "developer") {
-      result.push({
-        role: "developer",
-        content: `Task anchor (original user intent):\n${anchor}\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.`,
-      });
+      result.push(taskAnchorMessage(anchor));
       if (latestProgress) result.push({ role: "developer", content: latestProgress });
       injectedAnchor = true;
     }
@@ -117,10 +121,7 @@ export function prepareOpenCodeMessages(
   }
 
   if (!injectedAnchor && anchor) {
-    result.push({
-      role: "developer",
-      content: `Task anchor (original user intent):\n${anchor}\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.`,
-    });
+    result.push(taskAnchorMessage(anchor));
     if (latestProgress) result.push({ role: "developer", content: latestProgress });
     if (!genuineUsers.length) result.push({ role: "user", content: anchor });
   } else if (!genuineUsers.length && anchor && !result.some((item) => item.role === "user")) {
@@ -150,7 +151,7 @@ export function prepareGithubActionMessages(
 
     if (item.role === "user") {
       if (continuationOnly.test(text.trim())) continue;
-      const key = normalized(text);
+      const key = normalizeUserText(text);
       if (seenUsers.has(key)) continue;
       seenUsers.add(key);
       if (REVIEW_REQUEST.test(text)) reviewDetected = true;

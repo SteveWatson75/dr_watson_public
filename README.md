@@ -11,6 +11,8 @@ not another model deciding which model to call.
 ## How it fits together
 
 - **Entry points:** `src/index.ts` runs the CLI; `src/serve.ts` starts the loopback API.
+- **Local API:** `src/local-api.ts` owns the HTTP boundary; `src/local-api/` separates
+  protocol validation/SSE, message preparation and session-aware completion routing.
 - **Conversation:** `src/conversation/` assembles CLI context and stores messages,
   durable memories and usage statistics in SQLite.
 - **Agents:** `src/agents/` defines the manager, coder, researcher and memory

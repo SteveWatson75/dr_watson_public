@@ -131,6 +131,9 @@ describe("loopback OpenCode API", () => {
     const summary =
       "## Objective\nImplement issue #111 across the repo\n\n## Requirements\n- Keep direct product routes working\n\n## Work State\n### Completed\n- Read canonical-products.ts\n\n## Next Move\n1. Implement the filter";
     const prepared = prepareOpenCodeMessages([{ role: "assistant", content: summary }]);
+    expect(prepared.find((item) => item.role === "developer")?.content).toBe(
+      "Task anchor (original user intent):\nObjective:\nImplement issue #111 across the repo\n\nRequirements:\n- Keep direct product routes working\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.",
+    );
     expect(
       prepared.some(
         (item) => item.role === "user" && String(item.content).includes("Implement issue #111"),
