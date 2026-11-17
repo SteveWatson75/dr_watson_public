@@ -12,7 +12,6 @@ import {
 // Preserve the entry point used by the server, reviewer and existing API callers.
 export { routedCompletion, type CompletionTransport } from "./local-api/completion.js";
 export {
-  BOUNDED_REVIEW_MARKER,
   conversationTier,
   isOpenCodeCompactionRequest,
   isOpenCodeStateSummary,
