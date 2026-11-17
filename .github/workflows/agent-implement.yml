@@ -73,6 +73,16 @@ jobs:
           fi
           BRANCH="agent/issue-$ISSUE_NUMBER-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           git switch -c "$BRANCH"
+          # Disable rename detection so both source and destination are checked.
+          git status --porcelain=v1 -z --untracked-files=all --no-renames > "$RUNNER_TEMP/implementation-status"
+          while IFS= read -r -d '' entry; do
+            case "${entry:3}" in
+              .github/workflows|.github/workflows/*|.github/actions|.github/actions/*|SECURITY.md|AGENTS.md|.opencode|.opencode/*|opencode.json)
+                echo "::error::Protected workflow/security path changed; refusing to stage, commit, push or create a PR."
+                exit 1
+                ;;
+            esac
+          done < "$RUNNER_TEMP/implementation-status"
           git add --all
           git commit -m "Implement issue #$ISSUE_NUMBER"
           gh auth setup-git
