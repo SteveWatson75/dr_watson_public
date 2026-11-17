@@ -20,7 +20,7 @@ import {
 } from "./github-review.js";
 import { invokeReview, type Attempt } from "./github-review-model.js";
 import { candidateCatalogue } from "../providers/model-policy.js";
-import { boundedText, reviewConfig, publish } from "./github-review-cli.js";
+import { boundedText, reviewConfig, publish, operationDiagnostic } from "./github-review-cli.js";
 
 const sha = "a".repeat(40);
 const base = "b".repeat(40);
@@ -404,6 +404,7 @@ describe("bounded provider execution", () => {
     expect(calls).toHaveBeenCalledTimes(1);
     expect(calls.mock.calls[0]?.[0]).toEqual({ provider: "opencode", model: "mimo-v2.6-pro" });
     expect(response.result.outcome).toBe("Has blocking changes needed");
+    expect(response.verdictValid).toBe(true);
     expect(attempts[0]?.inputTokens).toBe(200);
     expect(JSON.stringify(attempts)).not.toContain("test-key-never-log-this");
   });
@@ -474,6 +475,7 @@ describe("bounded provider execution", () => {
     const { context, manifest } = prepared();
     const result = await invokeReview(context, manifest, [], async () => completion(raw));
     expect(result.modelSuccess).toBe(true);
+    expect(result.verdictValid).toBe(false);
     expect(result.result.outcome).toBe("Incomplete");
   });
   it("rejects an attempted tool call structurally, without a tool dispatcher", async () => {
@@ -491,10 +493,43 @@ describe("bounded provider execution", () => {
       return response;
     });
     expect(result.result.outcome).toBe("Incomplete");
+    expect(result.verdictValid).toBe(false);
+  });
+  it("distinguishes valid coverage-limited output from truncated model output", async () => {
+    vi.stubEnv("OPENCODE_API_KEY", "test-key");
+    const { context, manifest } = prepared();
+    manifest.fullScope = false;
+    const valid = await invokeReview(context, manifest, [], async () => completion(approved));
+    expect(valid).toMatchObject({
+      modelSuccess: true,
+      verdictValid: true,
+      result: { outcome: "Incomplete" },
+    });
+    const truncated = await invokeReview(context, manifest, [], async () => {
+      const response = completion(approved);
+      response.choices[0]!.finish_reason = "length";
+      return response;
+    });
+    expect(truncated).toMatchObject({
+      modelSuccess: true,
+      verdictValid: false,
+      result: { outcome: "Incomplete" },
+    });
   });
 });
 
 describe("workflow trust boundaries", () => {
+  it("reports the failed phase and allowlisted identity/HTTP errors without leaking arbitrary details", () => {
+    expect(operationDiagnostic(new Error("Artifact identity mismatch"), "publish")).toContain(
+      "Review publish failed: Artifact identity mismatch",
+    );
+    expect(operationDiagnostic(new Error("GitHub HTTP 403"), "collect")).toContain(
+      "Review collect failed: GitHub HTTP 403",
+    );
+    expect(operationDiagnostic(new Error("secret-key-12345"), "secret-key-12345")).not.toContain(
+      "secret-key-12345",
+    );
+  });
   it("preserves the actual timeout reason when publishing a failed invocation", async () => {
     const directory = await mkdtemp(join(tmpdir(), "review-timeout-publication-test-"));
     const { manifest } = prepared();
@@ -510,6 +545,7 @@ describe("workflow trust boundaries", () => {
         diagnostics: {
           modelSuccess: false,
           cliSuccess: true,
+          verdictValid: false,
           requestCount: 1,
           fallbackAttempts: 0,
           attempts: [
@@ -596,6 +632,7 @@ describe("workflow trust boundaries", () => {
         diagnostics: {
           modelSuccess: true,
           cliSuccess: true,
+          verdictValid: true,
           requestCount: 1,
           fallbackAttempts: 0,
           attempts: [

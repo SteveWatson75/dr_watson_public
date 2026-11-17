@@ -11,7 +11,7 @@ import {
   OUTPUT_TOKEN_LIMIT,
   inputTokenUpperBound,
   incomplete,
-  validateReview,
+  parseReview,
   type Manifest,
   type ReviewResult,
 } from "./github-review.js";
@@ -52,10 +52,11 @@ export async function invokeReview(
   attempts: Attempt[],
   injected?: CompletionTransport,
   signal?: AbortSignal,
-): Promise<{ result: ReviewResult; route?: string; modelSuccess: boolean }> {
+): Promise<{ result: ReviewResult; route?: string; modelSuccess: boolean; verdictValid: boolean }> {
   if (config.provider !== "auto" || config.model)
     return {
       modelSuccess: false,
+      verdictValid: false,
       result: incomplete(
         manifest,
         "Manual provider/model overrides are not permitted for reviews.",
@@ -67,6 +68,7 @@ export async function invokeReview(
   ) {
     return {
       modelSuccess: false,
+      verdictValid: false,
       result: incomplete(manifest, "Prepared input exceeds byte/token safety budgets."),
     };
   }
@@ -163,6 +165,7 @@ export async function invokeReview(
     if (choice?.finish_reason !== "stop" || choice.message.tool_calls?.length) {
       return {
         modelSuccess: true,
+        verdictValid: false,
         route,
         result: incomplete(
           manifest,
@@ -170,15 +173,29 @@ export async function invokeReview(
         ),
       };
     }
-    return {
-      modelSuccess: true,
-      route,
-      result: validateReview(choice.message.content ?? "", manifest),
-    };
+    try {
+      return {
+        modelSuccess: true,
+        verdictValid: true,
+        route,
+        result: parseReview(choice.message.content ?? "", manifest),
+      };
+    } catch {
+      return {
+        modelSuccess: true,
+        verdictValid: false,
+        route,
+        result: incomplete(
+          manifest,
+          "Missing or invalid model verdict, SHA, findings, or output structure.",
+        ),
+      };
+    }
   } catch {
     const last = attempts.at(-1);
     return {
       modelSuccess: false,
+      verdictValid: false,
       result: incomplete(
         manifest,
         last

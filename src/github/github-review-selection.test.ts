@@ -394,6 +394,7 @@ describe("deterministic evidence prioritization", () => {
         diagnostics: {
           modelSuccess: true,
           cliSuccess: true,
+          verdictValid: true,
           requestCount: 1,
           fallbackAttempts: 0,
           attempts: [
@@ -423,7 +424,7 @@ describe("deterministic evidence prioritization", () => {
     const previous = process.exitCode;
     try {
       await publish(11, sha, directory);
-      expect(process.exitCode).toBe(1);
+      expect(process.exitCode).toBe(previous);
       const posted = JSON.parse(calls.mock.calls[1]![1].body);
       expect(posted.body).toContain("Final outcome: **Incomplete**");
       expect(posted.body).not.toContain("**Approved**");
@@ -444,7 +445,7 @@ describe("human-review enforcement alignment", () => {
       );
       expect(reviewPriority(path)).toBe(0);
       expect(manifest.humanRequired).toBe(true);
-      expect(manifest.fullScope).toBe(false);
+      expect(manifest.fullScope).toBe(true);
       expect(validateReview(JSON.stringify(approved), manifest).outcome).toBe("Incomplete");
     },
   );
@@ -490,7 +491,7 @@ describe("human-review enforcement alignment", () => {
     expect(reviewPriority(path)).toBe(0);
     expect(manifest.included.map((file) => file.path)).toContain(path);
     expect(manifest.humanRequired).toBe(true);
-    expect(manifest.fullScope).toBe(false);
+    expect(manifest.fullScope).toBe(true);
     expect(validateReview(JSON.stringify(approved), manifest).outcome).toBe("Incomplete");
   });
   it.each([

@@ -336,7 +336,7 @@ export function prepareReview(
       manifest.included.push({ path: item.path, ...patchLines(item.selected) });
     }
   }
-  if (!manifest.included.length || manifest.humanRequired) manifest.fullScope = false;
+  if (!manifest.included.length) manifest.fullScope = false;
   // Summary is authoritative in the published report; omitted from model input to reserve source budget.
   manifest.contextBytes = Buffer.byteLength(context);
   manifestSchema.parse(manifest);
@@ -374,32 +374,38 @@ export function incomplete(manifest: Manifest, reason: string): ReviewResult {
   };
 }
 
-export function validateReview(raw: string, manifest: Manifest): ReviewResult {
-  try {
-    if (Buffer.byteLength(raw) > RESPONSE_BYTES) throw new Error();
-    const result = resultSchema.parse(JSON.parse(raw));
-    if (result.sha !== manifest.sha) throw new Error();
-    for (const finding of result.findings) {
-      if (
-        !manifest.included.some(
-          (f) =>
-            f.path === finding.path &&
-            (finding.side === "old" ? f.deletedLines : f.lines).includes(finding.line),
-        )
-      )
-        throw new Error();
-    }
+// Invalid output is an execution failure, unlike a valid Incomplete verdict.
+export function parseReview(raw: string, manifest: Manifest): ReviewResult {
+  if (Buffer.byteLength(raw) > RESPONSE_BYTES) throw new Error();
+  const result = resultSchema.parse(JSON.parse(raw));
+  if (result.sha !== manifest.sha) throw new Error();
+  for (const finding of result.findings) {
     if (
-      (result.outcome === "Approved" && result.findings.length) ||
-      (result.outcome === "Has blocking changes needed" && !result.findings.length)
+      !manifest.included.some(
+        (f) =>
+          f.path === finding.path &&
+          (finding.side === "old" ? f.deletedLines : f.lines).includes(finding.line),
+      )
     )
       throw new Error();
-    if (result.outcome === "Approved" && !manifest.fullScope)
-      return incomplete(
-        manifest,
-        "Required coverage incomplete or policy/workflow changes require human review.",
-      );
-    return result;
+  }
+  if (
+    (result.outcome === "Approved" && result.findings.length) ||
+    (result.outcome === "Has blocking changes needed" && !result.findings.length)
+  )
+    throw new Error();
+  if (result.findings.length) return { ...result, outcome: "Has blocking changes needed" };
+  if (result.outcome === "Approved" && (!manifest.fullScope || manifest.humanRequired))
+    return incomplete(
+      manifest,
+      "Required coverage incomplete or policy/workflow changes require human review.",
+    );
+  return result;
+}
+
+export function validateReview(raw: string, manifest: Manifest): ReviewResult {
+  try {
+    return parseReview(raw, manifest);
   } catch {
     return incomplete(
       manifest,
@@ -426,6 +432,12 @@ export function renderReview(
   const details = [
     `PR #${manifest.pr}; inspected commit ${manifest.sha}`,
     `Coverage: ${manifest.fullScope ? "full intended diff scope" : "partial / human review required"}; ${manifest.included.length} included, ${manifest.excluded.length} exclusions/omissions.`,
+    `Mandatory human inspection: ${manifest.humanRequired ? "required; automated approval prohibited" : "not required by path policy"}.`,
+    ...(manifest.fullScope
+      ? []
+      : [
+          "Inspect omitted code directly, or split formatting from functional changes into smaller PRs. Omitted code was not reviewed.",
+        ]),
     result.reason,
     "Findings:",
     ...result.findings.map(
@@ -433,7 +445,7 @@ export function renderReview(
         `${f.path}:${f.line} (${f.side} side): ${f.defect}\nBlocking because: ${f.blockingReason}`,
     ),
     ...(!result.findings.length ? ["No validated blocking findings reported."] : []),
-    "Inspected:",
+    "Supplied hunks (a path listed below as omitted is only partially inspected):",
     ...manifest.included.slice(0, inventoryLimit).map((f) => f.path),
     "Excluded / omitted (evidence retained in repository):",
     ...manifest.excluded.slice(0, inventoryLimit).map((f) => `${f.path}: ${f.reason}`),

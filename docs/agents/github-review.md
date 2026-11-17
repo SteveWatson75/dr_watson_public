@@ -35,6 +35,142 @@ V4 Pro timeout, but does not prove the same failure caused every review timeout.
   allocation (below) fix the ordering; the fail-closed **Incomplete** behavior is
   unchanged.
 
+## Reliability audit (17 November 2026)
+
+These are distinct failure classes, not one recurring provider failure:
+
+| Runs | Evidence | Classification |
+| --- | --- | --- |
+| `43903849953`, `43907480204`, `43912497002`, `43914200441`, `43918034695`, `43921074076`, `43923089401` | Actions reports `startup_failure`; all seven have zero jobs. The first/last run-page annotations explicitly identify GitHub's scheduled public-repository `pull_request_target` brownout ending 16 November at 18:00 UTC. | GitHub event-policy startup block, before collection or model execution. |
+| `43896092373`, `43898047536` (PR #12) | Published diagnostics show two ~60-second Go attempts, both `transport`, `modelSuccess: false`, successful client and publication. | Actual provider execution failures; logs do not prove a more specific upstream cause. |
+| `43890950771` (PR #11) | Successful model/client/publication, two included files, nine exclusions, partial scope. | Coverage limitation (historical selection problem described above), not transport failure. |
+| `44047761206` (PR #19) | Both job logs and downloaded result artifact confirm one successful MiMo Pro call (39,995 ms; 5,993 input / 1,212 output tokens), successful artifact transfer and COMMENT publication. `fullScope: false`, `humanRequired: true`, 34 included paths, 65 exclusion entries, 20,000 context bytes, `Incomplete`, zero findings. | Honest incomplete verdict due to bounded coverage and mandatory inspection, incorrectly presented as publication/execution failure by unconditional `Incomplete` exit code 1. |
+
+The workflow is now explicitly **collect → analyze → current-run artifact → publish
+(`review-execution`) → `review-integrity` / `review-policy`**. The first two phases use trusted base code
+and read-only GitHub access. Publication uses the same trusted base, strict artifact
+and finding validation, live head/base revalidation, and a deterministic COMMENT
+write. Only a fixed `approved=true/false` output reaches the credential-free policy
+job; model text never becomes a workflow expression, command or GitHub operation.
+
+| Result | `review-execution` | `review-integrity` | `review-policy` |
+| --- | --- | --- | --- |
+| Valid complete Approved, current SHA, successful publication, no human-required path | success | success | success (advisory result only, not merge approval) |
+| Valid blocking findings, including partial scope | success | success | failure |
+| Valid Incomplete, omitted required code, or mandatory human inspection | success | success | failure |
+| Invalid/missing artifact or verdict, failed client/provider, stale SHA, publication failure | failure | failure | failure |
+| Analysis/publication skipped, cancelled, failed or missing | not successful or absent | failure if the integrity job runs; otherwise no passing integrity check | failure if the policy job runs; otherwise no passing policy check |
+
+`analyze` now also fails on actual client/provider/invalid-output execution failures,
+**after** writing safe diagnostics for the always-run artifact upload. A syntactically
+valid model `Incomplete` is not such a failure. `verdictValid` distinguishes invalid/
+truncated model output from a valid limited verdict; the publisher independently
+revalidates the artifact. Coverage completeness and mandatory human inspection are
+independent fields: even complete supplied guardrail hunks cannot receive Approved.
+Validated findings accompanying Incomplete are retained as a narrower blocking
+verdict; they never establish complete coverage.
+
+### Required-check deployment and neutral conclusions
+
+[GitHub accepts successful, skipped **and neutral** required checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging).
+Therefore a neutral incomplete check alone would silently satisfy a required
+security gate. Writing custom conclusions through the [Checks API](https://docs.github.com/en/rest/checks/runs#create-a-check-run)
+would also require Checks write access. Neither is necessary: native Actions jobs
+provide separate execution and fail-closed policy checks, with **no additional
+write permissions**. The policy job always evaluates dependency results and fails
+for skipped/missing results rather than itself skipping. It has no checkout,
+dependencies, provider secret or token permissions.
+
+**Owner action after inspecting/merging this policy:** configure the native rulesets
+below in Settings → Rules → Rulesets. Do **not** use `analyze` or `review-execution`
+alone as the review-integrity gate: either can skip, and GitHub accepts skipped
+required checks. `review-integrity` always checks that **both** dependencies actually
+succeeded; it has no credentials, checkout, approval input or exception mechanism.
+The old
+`publish` display name is deliberately retired so an existing required `publish`
+context cannot silently become passing for Incomplete; replace that requirement
+with the integrity/policy requirements below, not with the execution check. At audit time the main
+protection API returned “Branch not protected” and the rulesets API returned no
+rulesets. This PR does not change repository settings or claim an enforced merge
+gate exists.
+
+#### Native owner exception, not AI approval
+
+Use **two active branch rulesets targeting `main`**. GitHub
+[aggregates all applicable rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets#about-rule-layering);
+bypass of one ruleset does not remove the other's requirements.
+
+| Ruleset | Required protections | Bypass list |
+| --- | --- | --- |
+| Baseline (never bypass for an AI-policy exception) | Require PR; at least one independent approving review; dismiss stale approvals; require approval of the most recent reviewable push; require `typecheck` and `review-integrity` from GitHub Actions, with branches up to date before merging. Preserve existing stronger protections. | **Empty, including owner/admins, apps and bots.** |
+| AI policy | Require `review-policy` from GitHub Actions. Put **only** this requirement in this ruleset. | Explicitly authorized owner role/team only, **For pull requests only**. No workflow token/app, general write role or always/direct-push bypass. |
+
+GitHub documents [PR-only bypass](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository#granting-bypass-permissions-for-your-branch-or-tag-ruleset)
+as a native PR/audit trail, and [authors cannot approve their own PRs](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/approving-a-pull-request-with-required-reviews).
+An owner-authored change therefore still needs another qualified human reviewer;
+an owner-only CODEOWNERS entry or a bot acting for the author is not a substitute.
+If no independent qualified reviewer is available, the merge remains blocked.
+Never give the owner an exception to the baseline's approval or integrity rules.
+
+After independent review of the **current** change (including omitted code and any
+findings), the authorized owner may explicitly use GitHub's PR-only bypass of the
+**AI-policy ruleset only**. Record the decision, inspected head/base/run, reviewer,
+scope and rationale on the PR. Such a comment is an audit record, **not** an
+exception command consumed by this workflow. `approved=false`, the original
+Incomplete/blocking COMMENT and failed `review-policy` remain unchanged. Human
+approval is merge authorization under repository policy, never automated AI
+approval. Failed/missing/stale/invalid analysis or publication still fails the
+non-bypassable `review-integrity`, irrespective of owner bypass or human approval.
+
+**Limits:** native bypass is scoped to a ruleset/actor, **not** to `humanRequired`
+or a particular model verdict. It can waive the AI-policy requirement for any
+otherwise valid review, including blocking or coverage-limited verdicts; that
+human discretion must be explicitly acceptable to the owner. It cannot waive
+integrity/CI/independent approval with the separate baseline above. Roles may be
+broader than a named owner (e.g. repository administrators); only use a role/team
+whose entire membership is authorized. Do not grant broader authority just because
+the desired identity is unavailable in the UI.
+
+If this scoped native setup is unavailable, or policy requires a machine-enforced
+**human-required-only** exception, retain `review-policy` in the non-bypassable
+baseline and accept that such merges remain blocked. Ordinary approval alone
+cannot override a required failed check. The current permission/event model has
+**no safe automatic exception**: do not add a label, PR-text command, author
+self-approval, model field, PAT, bot approval or blanket administrator bypass.
+Changing that limitation would need a separately reviewed policy design, not a
+silent privilege expansion. As with any repository policy, administrators able to
+edit rulesets remain trusted; these instructions do not prevent administrative
+reconfiguration.
+
+The historical brownout is separate: if a future startup annotation reports an
+event-policy block, an administrator must inspect the applicable Actions event
+policy and explicitly allow the trusted-base workflow if appropriate. Do not
+switch to PR-head execution, broaden tokens, or claim a code fix resolves a
+platform policy block.
+
+### Large/formatting-heavy PRs
+
+Coverage handling now reports mandatory inspection independently of truncation and
+labels included paths as **supplied hunks**, not fully inspected files. Omissions
+remain explicit and prevent approval under the existing required-scope rules.
+Oversized comments abbreviate only the inventory, never findings or the verdict;
+the complete inventory stays in the summary/artifact. Split mechanical formatting
+from functional changes, or inspect omitted code directly.
+
+No formatting is inferred from PR claims, whitespace-normalized code, or model
+assertions. No omitted code is silently approved. Multi-part inference is not
+introduced: PR #19 exhausted the source budget across many files and also required
+human inspection regardless of extra model coverage. More calls cannot remove
+that policy requirement; there is no demonstrated reliability gain sufficient to
+justify increased inference/timeout exposure here. Context, per-file, request,
+fallback, output, deadline, privacy and zero-dollar limits are unchanged.
+
+PR #19 merged at `f4a11da` before this branch was created. Standard `ci.yml` now
+runs its existing `npm run format:check` immediately after `npm ci`, without
+formatting/writing/committing files, without changed permissions, and never through
+Agent review. Offline tests invoke the actual script on formatted/misformatted
+temporary source and verify that failure does not rewrite the source.
+
 ## Input and execution
 
 `agent-review.yml` runs trusted **main/base** code via `pull_request_target`; it never checks
@@ -140,13 +276,15 @@ Missing/wrong sides, unrelated old lines and omitted deletion locations are inva
 never approval. Published findings label their side; old-side lines refer to the inspected base.
 Reports include inspected/excluded material, remaining manual QA and one final outcome, rendered
 as escaped plain text plus a deterministic outcome heading.
-If a comment would exceed 60 KB, publish Incomplete with an explicitly abbreviated inventory;
+If a comment would exceed 60 KB, preserve the verdict/findings with an explicitly abbreviated inventory;
 the full filename/reason inventory remains in the job summary and result artifact.
 
 Every publication is a GitHub **COMMENT**, tied to the inspected commit, not an actual GitHub
 approval. Incomplete is a valid, honest result: it records that the bounded evidence was
-insufficient instead of guessing, and it never implies the PR is safe. Incomplete is published where possible and makes the publish job fail. Blocking findings
-can be a successfully completed review without approving the PR. Analysis/job execution success,
+insufficient instead of guessing, and it never implies the PR is safe. Valid Incomplete is
+published where possible without failing `review-execution`, but always fails `review-policy`.
+Blocking findings also fail `review-policy`, even with incomplete coverage.
+Analysis/job execution success,
 model invocation success, review completion and review approval are separate facts.
 Repository settings must permit `GITHUB_TOKEN` review publication; failures never fall back to a PAT.
 
@@ -157,6 +295,8 @@ contains only the result, coverage manifest and diagnostics. No raw prompt, prov
 logs. Fields include PR/SHA, included/excluded counts, context bytes, conservative token upper
 bound, `requestCount`, `fallbackAttempts`, provider/model, duration, safe category/status, token
 usage when supplied, `modelSuccess`, `cliSuccess`, `reviewComplete`, `reviewApproved`, `fullScope`.
+`verdictValid`, `humanRequired`, `executionSuccess` and allowlisted `executionError` distinguish
+valid verdicts, human policy requirements and failed execution.
 `publicationSuccess` and a safe GitHub HTTP status distinguish publication failures; missing
 execution artifacts report unknown request counts (`null`), never an invented successful call.
 
@@ -168,7 +308,8 @@ Example (synthetic local live smoke, no GitHub publication):
  "outcome":"Has blocking changes needed","modelSuccess":true,"cliSuccess":true}
 ```
 
-1. Check **publish** outcome and actual final verdict, not just analysis success.
+1. Check **review-integrity**, **review-policy**, **review-execution**, the final verdict and safe execution diagnostics,
+   not just analysis success. A policy failure alone is not an infrastructure failure.
 2. For missing artifact, identify the failed prepare/install/analyze step; publisher records
    Incomplete. For missing comment, check GitHub permissions/outage/cancellation first.
 3. Inspect safe attempt categories: `timeout`, `rate_limit`, `upstream`, `invalid_or_policy`,
@@ -192,6 +333,47 @@ with an obvious synthetic correctness defect, mark ready, confirm SHA-bound COMM
 then try a data-heavy PR and verify exclusions. The draft cannot safely exercise its own new
 `pull_request_target` policy before it reaches trusted main. Do not merge just to test it.
 Manually verify Go Extra Usage remains off and repository token-review settings.
+
+For this reliability fix, before merge run `npm run format:check`, `npm run typecheck`,
+`npm test` and `git diff --check`. Mocked tests cover the loopback analysis/artifact
+handoff (including cached retries), complete approval, partial/human-required
+Incomplete, findings with omitted code, invalid artifacts/locations/diagnostics,
+provider/client/invalid-output failures, publication errors and stale head/base.
+The policy tests execute the actual workflow shell for success/failure/skipped/
+cancelled/missing dependency results; no live inference or GitHub writes occur.
+
+After owner merge, validate on **new small owner PRs**, not by altering PR #19:
+
+First inspect the two native rulesets above. The baseline must have no bypass
+actors and must require current independent approval, CI and `review-integrity`.
+Keep `review-policy` required in the separate AI-policy ruleset.
+
+1. A non-security one-file change should yield a SHA-bound COMMENT and both execution/
+   policy success only if the model returns a valid complete Approved verdict.
+2. A deliberately obvious correctness defect should publish actionable findings;
+   execution succeeds, policy fails. Do not merge the defect.
+3. A large formatting-heavy change should disclose omitted paths and remain
+   Incomplete (or blocking if findings exist); execution succeeds, policy fails.
+4. A tiny `src/local-api`/workflow change must report mandatory human inspection
+   and fail policy even if all hunks fit. No COMMENT may become GitHub APPROVE.
+5. Confirm invalid-output/provider/client failures fail analysis/execution with a
+   retained diagnostic artifact; head/base movement fails stale publication.
+   Prefer the mocked fault tests over deliberately exhausting live provider calls
+   or changing production credentials/settings.
+6. Confirm standard CI rejects a deliberately misformatted temporary PR commit,
+   then passes after **local** formatting; CI itself must never change files.
+7. Before enabling owner exceptions, verify native enforcement in the merge box:
+   owner-authored PR with no independent approval → blocked; human-required PR with
+   valid integrity, fresh independent approval and an authorized PR-only AI-policy
+   bypass → eligible under repository policy, with AI verdict/check still unchanged;
+   unauthorized bypass → blocked; failed/skipped/missing/stale/invalid review →
+   blocked **even with owner bypass and human approval**. A new head/base must
+   satisfy current checks/up-to-date and stale-approval rules again. These native
+   settings must be inspected manually; offline tests cannot prove live ruleset
+   configuration. Do not bypass baseline rules or weaken settings to make QA pass.
+
+Live hosted verification requires owner-authorized inference and trusted main;
+local mocked coverage is not a claim that the new hosted workflow has run.
 
 Known limits: this remains a bounded, diff-based, advisory review, not a comprehensive
 code review. Diff-only review lacks unchanged-file context; GitHub patch truncation and
