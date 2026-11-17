@@ -13,17 +13,30 @@ export interface ExpendableHistory {
   render: (messages: string[]) => string;
 }
 
-export function trimHistory(request: ModelRequest, history: ExpendableHistory | undefined, limit: number): ModelRequest {
+export function trimHistory(
+  request: ModelRequest,
+  history: ExpendableHistory | undefined,
+  limit: number,
+): ModelRequest {
   if (!history || estimatedInputTokens(request) <= limit) return request;
   function replace(value: unknown, prompt: string): unknown {
     if (typeof value === "string") return value === history!.prompt ? prompt : value;
     if (Array.isArray(value)) return value.map((item) => replace(item, prompt));
-    if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, replace(item, prompt)]));
+    if (value && typeof value === "object")
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, replace(item, prompt)]),
+      );
     return value;
   }
   let trimmed = request;
   for (let count = 1; count <= history.messages.length; count++) {
-    trimmed = { ...request, input: replace(request.input, history.render(history.messages.slice(count))) as ModelRequest["input"] };
+    trimmed = {
+      ...request,
+      input: replace(
+        request.input,
+        history.render(history.messages.slice(count)),
+      ) as ModelRequest["input"],
+    };
     if (estimatedInputTokens(trimmed) <= limit) break;
   }
   return trimmed;

@@ -14,7 +14,7 @@ describe("OpenCode routed-model context budget", () => {
     // An explicit percentage bypasses OpenCode's default 16k buffer floor and
     // still scales safely when another provider/model is selected in this project.
     expect(compaction.buffer).toBe("3.125%");
-    const reserved = Math.round(context * Number.parseFloat(compaction.buffer) / 100);
+    const reserved = Math.round((context * Number.parseFloat(compaction.buffer)) / 100);
     expect(reserved).toBe(output);
     expect(context - reserved).toBe(253952);
   });

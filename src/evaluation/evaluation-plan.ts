@@ -57,7 +57,8 @@ export function estimateEvaluationPlan(
     const limits = fixtures.map((fixture) => tokenBound(systemPrompt, fixture.prompt));
     const maxInputTokensPerCall = limits.length ? Math.max(...limits) : 0;
     const documentedLimit = outputLimit(candidate.id);
-    const maxOutputTokensPerCall = documentedLimit === undefined ? maxTokens : Math.min(maxTokens, documentedLimit);
+    const maxOutputTokensPerCall =
+      documentedLimit === undefined ? maxTokens : Math.min(maxTokens, documentedLimit);
     const worstCaseInputTokens = limits.reduce((sum, value) => sum + value, 0) * repetitions;
     const worstCaseOutputTokens = maxOutputTokensPerCall * calls;
     return {
@@ -67,13 +68,15 @@ export function estimateEvaluationPlan(
       maxOutputTokensPerCall,
       worstCaseInputTokens,
       worstCaseOutputTokens,
-      worstCaseAllowanceUsd: (worstCaseInputTokens * candidate.input + worstCaseOutputTokens * candidate.output) / 1e6,
+      worstCaseAllowanceUsd:
+        (worstCaseInputTokens * candidate.input + worstCaseOutputTokens * candidate.output) / 1e6,
       worstCaseSeconds: (calls * timeoutMs) / 1000,
       outputLimitApplied: documentedLimit !== undefined && documentedLimit < maxTokens,
     };
   });
 
-  const sum = (pick: (row: EvaluationPlanRow) => number) => rows.reduce((total, row) => total + pick(row), 0);
+  const sum = (pick: (row: EvaluationPlanRow) => number) =>
+    rows.reduce((total, row) => total + pick(row), 0);
   return {
     calls: sum((row) => row.calls),
     fixtures: fixtures.length,

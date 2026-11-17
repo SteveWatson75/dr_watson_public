@@ -1,11 +1,22 @@
 import { randomUUID } from "node:crypto";
-import { OpenAIProvider, setDefaultModelProvider, setTracingDisabled, type Model, type ModelRequest, type ModelResponse } from "@openai/agents";
+import {
+  OpenAIProvider,
+  setDefaultModelProvider,
+  setTracingDisabled,
+  type Model,
+  type ModelRequest,
+  type ModelResponse,
+} from "@openai/agents";
 import OpenAI from "openai";
 import { config, providerSettings, type LlmProvider, type TaskTier } from "../config.js";
 import { budgetLedger, estimatedCost, type BudgetLedger } from "../budget.js";
 import { isProviderFailoverError } from "./failover.js";
 import { modelRoutes, type ModelRoute } from "../routing/provider-chain.js";
-import { estimatedInputTokens, trimHistory, type ExpendableHistory } from "../conversation/haiku-context.js";
+import {
+  estimatedInputTokens,
+  trimHistory,
+  type ExpendableHistory,
+} from "../conversation/haiku-context.js";
 import { productionPrivacyEligibility } from "./model-policy.js";
 
 export type ProviderModel = Model;
@@ -40,10 +51,16 @@ function goHeaders(provider: LlmProvider) {
 async function rawModel(route: ModelRoute): Promise<Model> {
   const settings = providerSettings(route.provider, route.model);
   const client = new OpenAI({
-    apiKey: settings.apiKey, baseURL: settings.baseUrl,
-    maxRetries: 0, timeout: 60_000, defaultHeaders: goHeaders(route.provider),
+    apiKey: settings.apiKey,
+    baseURL: settings.baseUrl,
+    maxRetries: 0,
+    timeout: 60_000,
+    defaultHeaders: goHeaders(route.provider),
   });
-  return new OpenAIProvider({ openAIClient: client, useResponses: route.provider === "openai" }).getModel(settings.model);
+  return new OpenAIProvider({
+    openAIClient: client,
+    useResponses: route.provider === "openai",
+  }).getModel(settings.model);
 }
 
 // Every agent (including nested specialist and extraction calls) uses this wrapper.
@@ -73,31 +90,54 @@ export function guardedModel(
           return true;
         };
         if (privacyBlocked()) continue;
-        if (route.provider === "opencode" && !productionPrivacyEligibility(settings.model).reviewed) {
-          warn(`${routeKey} has no reviewed privacy policy; allowing the existing manual-model path, not granting privacy approval.`);
+        if (
+          route.provider === "opencode" &&
+          !productionPrivacyEligibility(settings.model).reviewed
+        ) {
+          warn(
+            `${routeKey} has no reviewed privacy policy; allowing the existing manual-model path, not granting privacy approval.`,
+          );
         }
         if (route.provider === "opencode" && (goCooldowns.get(routeKey) ?? 0) > Date.now()) {
           reason = `${routeKey} is cooling down after a Go usage limit.`;
           warn(`${reason} Trying the next configured route.`);
           continue;
         }
-        if (!settings.apiKey) { reason = `${route.provider} API key is missing.`; warn(reason); continue; }
+        if (!settings.apiKey) {
+          reason = `${route.provider} API key is missing.`;
+          warn(reason);
+          continue;
+        }
         // Reasoning-capable coding models can consume much of a 2K completion budget before
         // emitting a tool call. Give OpenCode Go enough room to reason and still act.
         const outputLimit = route.provider === "opencode" ? 8192 : 2048;
         const maxTokens = Math.min(request.modelSettings.maxTokens ?? outputLimit, outputLimit);
         let boundedRequest: ModelRequest = {
           ...request,
-          systemInstructions: route.provider === "anthropic" && request.outputType !== "text"
-            ? `${request.systemInstructions ?? ""}\nReturn only JSON matching this schema: ${JSON.stringify(request.outputType.schema)}`
-            : request.systemInstructions,
-          modelSettings: { ...request.modelSettings, maxTokens, retry: undefined, providerData: undefined },
+          systemInstructions:
+            route.provider === "anthropic" && request.outputType !== "text"
+              ? `${request.systemInstructions ?? ""}\nReturn only JSON matching this schema: ${JSON.stringify(request.outputType.schema)}`
+              : request.systemInstructions,
+          modelSettings: {
+            ...request.modelSettings,
+            maxTokens,
+            retry: undefined,
+            providerData: undefined,
+          },
         };
         if (/haiku/i.test(settings.model)) {
           boundedRequest = trimHistory(boundedRequest, history, config.haikuInputLimit);
-          if (boundedRequest.modelSettings.reasoning?.effort && !["low", "medium"].includes(boundedRequest.modelSettings.reasoning.effort)) {
-            boundedRequest = { ...boundedRequest, modelSettings: { ...boundedRequest.modelSettings,
-              reasoning: { ...boundedRequest.modelSettings.reasoning, effort: "low" } } };
+          if (
+            boundedRequest.modelSettings.reasoning?.effort &&
+            !["low", "medium"].includes(boundedRequest.modelSettings.reasoning.effort)
+          ) {
+            boundedRequest = {
+              ...boundedRequest,
+              modelSettings: {
+                ...boundedRequest.modelSettings,
+                reasoning: { ...boundedRequest.modelSettings.reasoning, effort: "low" },
+              },
+            };
           }
           const size = estimatedInputTokens(boundedRequest);
           if (size > config.haikuInputLimit) {
@@ -108,16 +148,30 @@ export function guardedModel(
         }
         const inputBound = Buffer.byteLength(JSON.stringify(boundedRequest)) + 4096;
         const pricedAt = new Date();
-        const reservedCost = estimatedCost(route.provider, settings.model, inputBound, maxTokens, pricedAt);
+        const reservedCost = estimatedCost(
+          route.provider,
+          settings.model,
+          inputBound,
+          maxTokens,
+          pricedAt,
+        );
         if (reservedCost === undefined) {
           reason = `No pricing for ${route.provider}:${settings.model}. Set LLM_INPUT_USD_PER_MILLION and LLM_OUTPUT_USD_PER_MILLION locally.`;
           warn(reason);
           continue;
         }
         const id = ledger.reserve(route.provider, settings.model, reservedCost);
-        if (id === undefined) { reason = "Monthly hard budget limit or remaining request budget reached."; warn(`${reason} Trying the next route.`); continue; }
+        if (id === undefined) {
+          reason = "Monthly hard budget limit or remaining request budget reached.";
+          warn(`${reason} Trying the next route.`);
+          continue;
+        }
         const status = ledger.status();
-        if (route.provider !== "ollama" && status.softLimit > 0 && status.spent >= status.softLimit) {
+        if (
+          route.provider !== "ollama" &&
+          status.softLimit > 0 &&
+          status.spent >= status.softLimit
+        ) {
           warn("Warning: monthly soft budget limit reached.");
         }
         const attemptStartedAt = performance.now();
@@ -135,19 +189,28 @@ export function guardedModel(
           // invocation has begun. Fallback behavior and warnings are unchanged.
           if (invocationBegan) {
             report?.({
-              provider: route.provider, model: settings.model, outcome: "failed",
+              provider: route.provider,
+              model: settings.model,
+              outcome: "failed",
               durationMs: Math.round(performance.now() - attemptStartedAt),
-              inputTokens: 0, outputTokens: 0,
+              inputTokens: 0,
+              outputTokens: 0,
             });
           }
-          const statusCode = error && typeof error === "object" && "status" in error ? Number(error.status) : undefined;
+          const statusCode =
+            error && typeof error === "object" && "status" in error
+              ? Number(error.status)
+              : undefined;
           if (route.provider === "opencode" && statusCode === 429) {
             goCooldowns.set(routeKey, Date.now() + GO_COOLDOWN_MS);
             warn(`${routeKey} hit a Go usage limit; cooling it down for 5 hours.`);
           }
           const providerFailure = failover(error);
           if (route.provider === "ollama") {
-            throw new Error(`${reason} Local Ollama is unavailable. Run \`ollama pull ${settings.model}\` and \`ollama serve\`, then retry.`, { cause: error });
+            throw new Error(
+              `${reason} Local Ollama is unavailable. Run \`ollama pull ${settings.model}\` and \`ollama serve\`, then retry.`,
+              { cause: error },
+            );
           }
           if (!providerFailure) throw error;
           reason = `${route.provider}:${settings.model} is unavailable.`;
@@ -158,34 +221,75 @@ export function guardedModel(
         // errors are bugs, not upstream provider failures, so they must not be
         // classified as such or trigger a fallback.
         const usage = response.usage;
-        if (usage && Number.isFinite(usage.inputTokens) && Number.isFinite(usage.outputTokens)
-          && usage.inputTokens >= 0 && usage.outputTokens >= 0
-          && ((usage.inputTokens > 0 && usage.outputTokens > 0) || route.provider === "ollama" || route.provider === "opencode")) {
-          const actual = estimatedCost(route.provider, settings.model, usage.inputTokens, usage.outputTokens, pricedAt);
-          if (actual !== undefined) ledger.settle(id, actual, usage.inputTokens, usage.outputTokens);
+        if (
+          usage &&
+          Number.isFinite(usage.inputTokens) &&
+          Number.isFinite(usage.outputTokens) &&
+          usage.inputTokens >= 0 &&
+          usage.outputTokens >= 0 &&
+          ((usage.inputTokens > 0 && usage.outputTokens > 0) ||
+            route.provider === "ollama" ||
+            route.provider === "opencode")
+        ) {
+          const actual = estimatedCost(
+            route.provider,
+            settings.model,
+            usage.inputTokens,
+            usage.outputTokens,
+            pricedAt,
+          );
+          if (actual !== undefined)
+            ledger.settle(id, actual, usage.inputTokens, usage.outputTokens);
         }
         const settledStatus = ledger.status();
-        if (route.provider !== "ollama" && settledStatus.softLimit > 0 && settledStatus.spent >= settledStatus.softLimit) {
+        if (
+          route.provider !== "ollama" &&
+          settledStatus.softLimit > 0 &&
+          settledStatus.spent >= settledStatus.softLimit
+        ) {
           warn("Warning: monthly soft budget limit reached.");
         }
         report?.({
-          provider: route.provider, model: settings.model, outcome: "used",
+          provider: route.provider,
+          model: settings.model,
+          outcome: "used",
           durationMs: Math.round(performance.now() - attemptStartedAt),
-          inputTokens: usage && Number.isFinite(usage.inputTokens) && usage.inputTokens >= 0 ? usage.inputTokens : 0,
-          outputTokens: usage && Number.isFinite(usage.outputTokens) && usage.outputTokens >= 0 ? usage.outputTokens : 0,
+          inputTokens:
+            usage && Number.isFinite(usage.inputTokens) && usage.inputTokens >= 0
+              ? usage.inputTokens
+              : 0,
+          outputTokens:
+            usage && Number.isFinite(usage.outputTokens) && usage.outputTokens >= 0
+              ? usage.outputTokens
+              : 0,
         });
         return response;
       }
       throw new Error(`${reason} No usable local fallback is configured.`);
     },
     async *getStreamedResponse() {
-      throw new Error("Streaming is disabled so each request can be budgeted and recorded before continuing.");
+      throw new Error(
+        "Streaming is disabled so each request can be budgeted and recorded before continuing.",
+      );
     },
   };
 }
 
-export function createRoutedModel(tier: TaskTier, override: LlmProvider | "auto" = config.provider, history?: ExpendableHistory, report?: ModelUsageReporter): Model {
-  return guardedModel(modelRoutes(tier, override), undefined, undefined, undefined, history, undefined, report);
+export function createRoutedModel(
+  tier: TaskTier,
+  override: LlmProvider | "auto" = config.provider,
+  history?: ExpendableHistory,
+  report?: ModelUsageReporter,
+): Model {
+  return guardedModel(
+    modelRoutes(tier, override),
+    undefined,
+    undefined,
+    undefined,
+    history,
+    undefined,
+    report,
+  );
 }
 
 export function configureModelProvider(): void {

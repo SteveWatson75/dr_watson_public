@@ -31,8 +31,12 @@ describe("task routing", () => {
   });
 
   it("keeps OpenCode compaction on the coding tier", () => {
-    expect(taskTier("Update the existing checkpoint with the current work state.")).toBe("standard");
-    expect(taskTier("Compaction summary: consolidate the conversation into the required template.")).toBe("standard");
+    expect(taskTier("Update the existing checkpoint with the current work state.")).toBe(
+      "standard",
+    );
+    expect(
+      taskTier("Compaction summary: consolidate the conversation into the required template."),
+    ).toBe("standard");
   });
 
   it("keeps the evaluated cheap route order", () => {
@@ -87,7 +91,9 @@ describe("task routing", () => {
   });
 
   it("derives routes only from the approved catalogue, never from evaluation scores", () => {
-    const before = (["cheap", "standard", "hard"] as const).map((tier) => modelRoutes(tier, "auto"));
+    const before = (["cheap", "standard", "hard"] as const).map((tier) =>
+      modelRoutes(tier, "auto"),
+    );
     const candidate = candidateCatalogue.candidates.find((entry) => entry.id === "qwen4-max")!;
     const original = { ...candidate };
     try {
@@ -125,9 +131,18 @@ describe("task routing", () => {
   });
 
   it("honors provider overrides and keeps local fallback", () => {
-    expect(modelRoutes("hard", "anthropic")[0]).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
-    expect(modelRoutes("hard", "opencode")[0]).toEqual({ provider: "opencode", model: "qwen4-max" });
+    expect(modelRoutes("hard", "anthropic")[0]).toEqual({
+      provider: "anthropic",
+      model: "claude-sonnet-5-5",
+    });
+    expect(modelRoutes("hard", "opencode")[0]).toEqual({
+      provider: "opencode",
+      model: "qwen4-max",
+    });
     expect(modelRoutes("hard", "ollama")).toEqual([{ provider: "ollama" }]);
-    expect(modelRoutes("cheap", "openai")).toEqual([{ provider: "openai" }, { provider: "ollama" }]);
+    expect(modelRoutes("cheap", "openai")).toEqual([
+      { provider: "openai" },
+      { provider: "ollama" },
+    ]);
   });
 });

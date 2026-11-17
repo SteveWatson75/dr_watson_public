@@ -1,6 +1,13 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { assertConfig, config, setupMessages, PROVIDERS, type LlmProvider, type TaskTier } from "./config.js";
+import {
+  assertConfig,
+  config,
+  setupMessages,
+  PROVIDERS,
+  type LlmProvider,
+  type TaskTier,
+} from "./config.js";
 import { budgetLedger, formatBudget } from "./budget.js";
 import { runConversation } from "./conversation/conversation.js";
 import { listProjects, loadProjectContext } from "./conversation/context.js";
@@ -28,7 +35,9 @@ let activeProject: string | undefined;
 let ceoNext = false;
 
 console.log("Dr Watson");
-console.log("Commands: /projects, /use <project>, /side [question], /back, /remember <fact>, /ceo, /tier auto|cheap|standard|hard, /provider auto|anthropic|gemini|ollama|openrouter|groq|openai, /stats, exit.\n");
+console.log(
+  "Commands: /projects, /use <project>, /side [question], /back, /remember <fact>, /ceo, /tier auto|cheap|standard|hard, /provider auto|anthropic|gemini|ollama|openrouter|groq|openai, /stats, exit.\n",
+);
 console.log(setupMessages().join("\n"));
 console.log(formatBudget(budgetLedger().status()));
 
@@ -47,20 +56,24 @@ while (true) {
       continue;
     }
     if (message === "/stats") {
-      console.log(`\n${formatStats(memory.getStats())}\n\n${formatBudget(budgetLedger().status())}\n`);
+      console.log(
+        `\n${formatStats(memory.getStats())}\n\n${formatBudget(budgetLedger().status())}\n`,
+      );
       continue;
     }
 
     if (message.startsWith("/tier ")) {
       const value = message.slice(6).trim();
-      if (!["auto", "cheap", "standard", "hard"].includes(value)) throw new Error("Use /tier auto|cheap|standard|hard.");
-      selectedTier = value === "auto" ? undefined : value as TaskTier;
+      if (!["auto", "cheap", "standard", "hard"].includes(value))
+        throw new Error("Use /tier auto|cheap|standard|hard.");
+      selectedTier = value === "auto" ? undefined : (value as TaskTier);
       console.log(`Task tier: ${value}`);
       continue;
     }
     if (message.startsWith("/provider ")) {
       const value = message.slice(10).trim();
-      if (value !== "auto" && !PROVIDERS.includes(value as LlmProvider)) throw new Error(`Use /provider auto|${PROVIDERS.join("|")}.`);
+      if (value !== "auto" && !PROVIDERS.includes(value as LlmProvider))
+        throw new Error(`Use /provider auto|${PROVIDERS.join("|")}.`);
       selectedProvider = value as LlmProvider | "auto";
       console.log(`Provider: ${value}`);
       continue;
@@ -104,7 +117,8 @@ while (true) {
     if (!actualMessage) throw new Error("Side question is empty.");
 
     if (actualMessage.startsWith("/remember ")) {
-      if (sideSessionId || oneOffSideQuestion) throw new Error("Long-term memory is disabled in side conversations.");
+      if (sideSessionId || oneOffSideQuestion)
+        throw new Error("Long-term memory is disabled in side conversations.");
       const fact = actualMessage.slice(10).trim();
       if (!fact) throw new Error("Nothing to remember.");
       memory.addMemory(fact, activeProject);
@@ -122,7 +136,7 @@ while (true) {
 
     const sessionId = oneOffSideQuestion
       ? memory.createSession(activeProject)
-      : sideSessionId ?? mainSessionId;
+      : (sideSessionId ?? mainSessionId);
 
     const ceo = ceoNext;
     ceoNext = false;
@@ -138,9 +152,18 @@ while (true) {
     console.log(`\n${response}\n`);
     if (!sideSessionId && !oneOffSideQuestion) {
       try {
-        await extractMemories(memory, config.autoMemory, actualMessage, response, activeProject, selectedProvider);
+        await extractMemories(
+          memory,
+          config.autoMemory,
+          actualMessage,
+          response,
+          activeProject,
+          selectedProvider,
+        );
       } catch (error) {
-        console.warn(`Automatic memory extraction skipped: ${error instanceof Error ? error.message : "unknown error"}`);
+        console.warn(
+          `Automatic memory extraction skipped: ${error instanceof Error ? error.message : "unknown error"}`,
+        );
       }
     }
   } catch (error) {

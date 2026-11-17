@@ -19,12 +19,14 @@ const reply: OpenAI.ChatCompletion = {
   object: "chat.completion",
   created: 1,
   model: "upstream",
-  choices: [{
-    index: 0,
-    message: { role: "assistant", content: "Done", refusal: null },
-    finish_reason: "stop",
-    logprobs: null,
-  }],
+  choices: [
+    {
+      index: 0,
+      message: { role: "assistant", content: "Done", refusal: null },
+      finish_reason: "stop",
+      logprobs: null,
+    },
+  ],
 };
 const prompt = {
   model: LOCAL_MODEL,
@@ -60,7 +62,10 @@ describe("local API trust boundaries", () => {
     { ...prompt, n: 2 },
     { ...prompt, messages: [{ role: "user", content: null }] },
     { ...prompt, messages: [{ role: "assistant", content: null }] },
-    { ...prompt, messages: [{ role: "user", content: [{ type: "image_url", image_url: "file:///secret" }] }] },
+    {
+      ...prompt,
+      messages: [{ role: "user", content: [{ type: "image_url", image_url: "file:///secret" }] }],
+    },
     { ...prompt, messages: [{ role: "user", content: "Hello", tool_calls: [] }] },
     { ...prompt, tools: [{ type: "function", function: { name: "read" } }] },
   ])("rejects unsupported input without calling a provider (%j)", async (body) => {
@@ -68,7 +73,8 @@ describe("local API trust boundaries", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        message: "Invalid request. Use dr-watson-auto with text messages and optional function tools.",
+        message:
+          "Invalid request. Use dr-watson-auto with text messages and optional function tools.",
         type: "invalid_request_error",
       },
     });
@@ -104,13 +110,17 @@ describe("local API trust boundaries", () => {
 
   it("rejects a non-loopback Host before parsing its body", async () => {
     const status = await new Promise<number | undefined>((resolve, reject) => {
-      const request = httpRequest(`${base}/v1/chat/completions`, {
-        method: "POST",
-        headers: { host: "localhost" },
-      }, (response) => {
-        response.resume();
-        resolve(response.statusCode);
-      });
+      const request = httpRequest(
+        `${base}/v1/chat/completions`,
+        {
+          method: "POST",
+          headers: { host: "localhost" },
+        },
+        (response) => {
+          response.resume();
+          resolve(response.statusCode);
+        },
+      );
       request.on("error", reject);
       request.end("{");
     });
@@ -122,20 +132,29 @@ describe("local API trust boundaries", () => {
     const error = new Error("secret-boundary-key sk-abcdefghijk");
     error.cause = new Error("Bearer abcdefghijkl", { cause: error });
     expect(redactProviderError(error)).toBe("[REDACTED] [REDACTED] [REDACTED]");
-    expect(redactProviderError({ message: "untrusted error object" }))
-      .toBe("No routed provider completed the request.");
+    expect(redactProviderError({ message: "untrusted error object" })).toBe(
+      "No routed provider completed the request.",
+    );
   });
 
   it("prepares messages without mutating the caller's history", () => {
     const messages = [
-      { role: "user" as const, content: [{ type: "text" as const, text: "Implement the feature" }] },
+      {
+        role: "user" as const,
+        content: [{ type: "text" as const, text: "Implement the feature" }],
+      },
       { role: "user" as const, content: "Continue" },
     ];
     const original = structuredClone(messages);
     const prepared = prepareOpenCodeMessages(messages);
     expect(messages).toEqual(original);
     expect(prepared).toEqual([
-      { role: "developer", content: expect.stringContaining("Task anchor (original user intent):\nImplement the feature") },
+      {
+        role: "developer",
+        content: expect.stringContaining(
+          "Task anchor (original user intent):\nImplement the feature",
+        ),
+      },
       messages[0],
     ]);
   });

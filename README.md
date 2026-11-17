@@ -231,6 +231,9 @@ the explicit Ollama override controls Dr Watson's routes, not OpenCode's own age
 ## Checks
 
 See [development checks and PR requirements](AGENTS.md).
+Run `npm run format` to format TypeScript source and tooling JSON with Prettier,
+or `npm run format:check` to check without writing. These commands do not rewrite
+model configuration, workflows, documentation or historical evaluation evidence.
 
 ## GitHub agent loop
 

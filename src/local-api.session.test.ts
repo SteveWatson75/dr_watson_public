@@ -2,11 +2,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type OpenAI from "openai";
 import { BudgetLedger } from "./budget.js";
 import { config } from "./config.js";
-import { LOCAL_MODEL, BOUNDED_REVIEW_MARKER, conversationTier, prepareGithubActionMessages, routedCompletion, type CompletionTransport } from "./local-api.js";
+import {
+  LOCAL_MODEL,
+  BOUNDED_REVIEW_MARKER,
+  conversationTier,
+  prepareGithubActionMessages,
+  routedCompletion,
+  type CompletionTransport,
+} from "./local-api.js";
 
 const reply: OpenAI.ChatCompletion = {
-  id: "chatcmpl-session-test", object: "chat.completion", created: 1, model: "upstream",
-  choices: [{ index: 0, message: { role: "assistant", content: "Done", refusal: null }, finish_reason: "stop", logprobs: null }],
+  id: "chatcmpl-session-test",
+  object: "chat.completion",
+  created: 1,
+  model: "upstream",
+  choices: [
+    {
+      index: 0,
+      message: { role: "assistant", content: "Done", refusal: null },
+      finish_reason: "stop",
+      logprobs: null,
+    },
+  ],
   usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
 };
 
@@ -30,14 +47,21 @@ afterEach(() => {
 describe("OpenCode session routing", () => {
   it("keeps remembered sessions' supplied messages unchanged while preserving their tier", async () => {
     const sessionId = "characterization-remembered-hard";
-    await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [{ role: "user", content: "Review the architecture" }],
-    }, { ledger, transport, sessionId });
+    await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [{ role: "user", content: "Review the architecture" }],
+      },
+      { ledger, transport, sessionId },
+    );
     const messages = [{ role: "user" as const, content: "Continue" }];
-    const result = await routedCompletion({
-      model: LOCAL_MODEL, messages,
-    }, { ledger, transport, sessionId });
+    const result = await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages,
+      },
+      { ledger, transport, sessionId },
+    );
 
     expect(result.route).toBe("opencode:qwen4-max");
     expect(transport.mock.calls[1]![1].messages).toEqual(messages);
@@ -47,15 +71,19 @@ describe("OpenCode session routing", () => {
     const sessionId = "characterization-sticky-fallback";
     transport.mockRejectedValueOnce(Object.assign(new Error("Unavailable"), { status: 503 }));
     const input: Parameters<typeof routedCompletion>[0] = {
-      model: LOCAL_MODEL, messages: [{ role: "user", content: "Hello" }],
+      model: LOCAL_MODEL,
+      messages: [{ role: "user", content: "Hello" }],
     };
     const first = await routedCompletion(input, { ledger, transport, sessionId });
     const second = await routedCompletion(input, { ledger, transport, sessionId });
 
     expect(first.route).toBe("opencode:glm-5.3-flash");
     expect(second.route).toBe(first.route);
-    expect(transport.mock.calls.map(([route]) => route.model))
-      .toEqual(["mimo-v2.6-flash", "glm-5.3-flash", "glm-5.3-flash"]);
+    expect(transport.mock.calls.map(([route]) => route.model)).toEqual([
+      "mimo-v2.6-flash",
+      "glm-5.3-flash",
+      "glm-5.3-flash",
+    ]);
   });
 
   it("uses trusted review routes without preparing or anchoring supplied messages", async () => {
@@ -63,9 +91,14 @@ describe("OpenCode session routing", () => {
       { role: "system" as const, content: "Trusted review policy" },
       { role: "user" as const, content: "Continue" },
     ];
-    await routedCompletion({ model: LOCAL_MODEL, messages }, {
-      ledger, transport, reviewRoutes: [{ provider: "opencode", model: "mimo-v2.6-pro" }],
-    });
+    await routedCompletion(
+      { model: LOCAL_MODEL, messages },
+      {
+        ledger,
+        transport,
+        reviewRoutes: [{ provider: "opencode", model: "mimo-v2.6-pro" }],
+      },
+    );
 
     expect(transport).toHaveBeenCalledExactlyOnceWith(
       { provider: "opencode", model: "mimo-v2.6-pro" },
@@ -75,39 +108,52 @@ describe("OpenCode session routing", () => {
   });
 
   it("maps developer messages to system for the OpenCode Go chat-completions API", async () => {
-    await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [
-        { role: "system", content: "System rules" },
-        { role: "developer", content: "Developer rules" },
-        { role: "user", content: "Summarize this change" },
-      ],
-      max_tokens: 64,
-    }, { ledger, transport });
+    await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [
+          { role: "system", content: "System rules" },
+          { role: "developer", content: "Developer rules" },
+          { role: "user", content: "Summarize this change" },
+        ],
+        max_tokens: 64,
+      },
+      { ledger, transport },
+    );
 
     const body = transport.mock.calls[0]![1];
     expect(body.messages.map((message) => message.role)).not.toContain("developer");
     expect(body.messages.filter((message) => message.role === "system")).toHaveLength(3);
-    expect(body.messages.some((message) => message.role === "system" && message.content === "Developer rules")).toBe(true);
+    expect(
+      body.messages.some(
+        (message) => message.role === "system" && message.content === "Developer rules",
+      ),
+    ).toBe(true);
   });
 
   it("keeps the selected model for later continuation and compaction requests", async () => {
     const sessionId = `test-session-${Date.now()}-${Math.random()}`;
-    const first = await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [{ role: "user", content: "Implement issue #111 across the repo" }],
-      max_tokens: 64,
-    }, { ledger, transport, sessionId });
+    const first = await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [{ role: "user", content: "Implement issue #111 across the repo" }],
+        max_tokens: 64,
+      },
+      { ledger, transport, sessionId },
+    );
 
-    const second = await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [
-        { role: "user", content: "Implement issue #111 across the repo" },
-        { role: "assistant", content: "I inspected the relevant files" },
-        { role: "user", content: "Update the existing checkpoint with the current work state." },
-      ],
-      max_tokens: 64,
-    }, { ledger, transport, sessionId });
+    const second = await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [
+          { role: "user", content: "Implement issue #111 across the repo" },
+          { role: "assistant", content: "I inspected the relevant files" },
+          { role: "user", content: "Update the existing checkpoint with the current work state." },
+        ],
+        max_tokens: 64,
+      },
+      { ledger, transport, sessionId },
+    );
 
     expect(first.route).toBe("opencode:mimo-v2.6-pro");
     expect(second.route).toBe(first.route);
@@ -131,15 +177,18 @@ describe("OpenCode session routing", () => {
   });
 
   it("skips coding-session anchoring for bounded GitHub Actions requests", async () => {
-    await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [
-        { role: "user", content: "Review the changes in this pull request" },
-        { role: "assistant", content: "I read the changed files" },
-        { role: "user", content: "Continue" },
-      ],
-      max_tokens: 64,
-    }, { ledger, transport, githubAction: true });
+    await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [
+          { role: "user", content: "Review the changes in this pull request" },
+          { role: "assistant", content: "I read the changed files" },
+          { role: "user", content: "Continue" },
+        ],
+        max_tokens: 64,
+      },
+      { ledger, transport, githubAction: true },
+    );
 
     const body = transport.mock.calls[0]![1];
     expect(JSON.stringify(body.messages)).not.toContain("Task anchor");
@@ -147,15 +196,18 @@ describe("OpenCode session routing", () => {
   });
 
   it("still anchors coding sessions when GitHub Actions mode is off", async () => {
-    await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [
-        { role: "user", content: "Implement issue #111 across the repo" },
-        { role: "assistant", content: "I inspected the relevant files" },
-        { role: "user", content: "Continue" },
-      ],
-      max_tokens: 64,
-    }, { ledger, transport });
+    await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [
+          { role: "user", content: "Implement issue #111 across the repo" },
+          { role: "assistant", content: "I inspected the relevant files" },
+          { role: "user", content: "Continue" },
+        ],
+        max_tokens: 64,
+      },
+      { ledger, transport },
+    );
 
     const body = transport.mock.calls[0]![1];
     expect(JSON.stringify(body.messages)).toContain("Task anchor");
@@ -192,14 +244,17 @@ describe("OpenCode session routing", () => {
   });
 
   it("does not inject a task anchor even when no assistant messages exist in GitHub Actions mode", async () => {
-    await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [
-        { role: "user", content: "Review the changes in this pull request" },
-        { role: "user", content: "Continue" },
-      ],
-      max_tokens: 64,
-    }, { ledger, transport, githubAction: true });
+    await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [
+          { role: "user", content: "Review the changes in this pull request" },
+          { role: "user", content: "Continue" },
+        ],
+        max_tokens: 64,
+      },
+      { ledger, transport, githubAction: true },
+    );
 
     const body = transport.mock.calls[0]![1];
     expect(JSON.stringify(body.messages)).not.toContain("Task anchor");
@@ -208,9 +263,11 @@ describe("OpenCode session routing", () => {
   });
 
   it("keeps review requests on the hard tier in GitHub Actions mode", async () => {
-    const tier = conversationTier([
-      { role: "user", content: "Review the changes in this pull request" },
-    ], undefined, true);
+    const tier = conversationTier(
+      [{ role: "user", content: "Review the changes in this pull request" }],
+      undefined,
+      true,
+    );
     expect(tier).toBe("hard");
   });
 
@@ -229,29 +286,40 @@ describe("OpenCode session routing", () => {
       { role: "user", content: "Review the pull request" },
       { role: "assistant", content: "I read the diff" },
     ]);
-    const boundaryCount = prepared.filter((item) => BOUNDED_REVIEW_MARKER.test(String(item.content))).length;
+    const boundaryCount = prepared.filter((item) =>
+      BOUNDED_REVIEW_MARKER.test(String(item.content)),
+    ).length;
     expect(boundaryCount).toBe(1);
   });
 
   it("upgrades a cheap session to the coding tier when OpenCode starts using tools", async () => {
     const sessionId = `test-session-upgrade-${Date.now()}-${Math.random()}`;
-    const first = await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [{ role: "user", content: "Can you look into this?" }],
-      max_tokens: 64,
-    }, { ledger, transport, sessionId });
+    const first = await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [{ role: "user", content: "Can you look into this?" }],
+        max_tokens: 64,
+      },
+      { ledger, transport, sessionId },
+    );
 
-    const toolCall = { id: "call-read", type: "function" as const,
-      function: { name: "read", arguments: '{"path":"src/index.ts"}' } };
-    const second = await routedCompletion({
-      model: LOCAL_MODEL,
-      messages: [
-        { role: "user", content: "Can you look into this?" },
-        { role: "assistant", content: null, tool_calls: [toolCall] },
-        { role: "tool", tool_call_id: toolCall.id, content: "Found the relevant source." },
-      ],
-      max_tokens: 64,
-    }, { ledger, transport, sessionId });
+    const toolCall = {
+      id: "call-read",
+      type: "function" as const,
+      function: { name: "read", arguments: '{"path":"src/index.ts"}' },
+    };
+    const second = await routedCompletion(
+      {
+        model: LOCAL_MODEL,
+        messages: [
+          { role: "user", content: "Can you look into this?" },
+          { role: "assistant", content: null, tool_calls: [toolCall] },
+          { role: "tool", tool_call_id: toolCall.id, content: "Found the relevant source." },
+        ],
+        max_tokens: 64,
+      },
+      { ledger, transport, sessionId },
+    );
 
     expect(first.route).toBe("opencode:mimo-v2.6-flash");
     expect(second.route).toBe("opencode:mimo-v2.6-pro");

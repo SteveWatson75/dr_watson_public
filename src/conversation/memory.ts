@@ -135,13 +135,15 @@ export class MemoryStore {
 
   getRecentMessages(sessionId: number, limit = 20): Message[] {
     const rows = this.db
-      .prepare(`
+      .prepare(
+        `
         SELECT role, content
         FROM messages
         WHERE session_id = ?
         ORDER BY id DESC
         LIMIT ?
-      `)
+      `,
+      )
       .all(sessionId, limit) as Array<{ role: Role; content: string }>;
 
     return rows.reverse();
@@ -166,18 +168,23 @@ export class MemoryStore {
     if (!terms.length) return [];
 
     const rows = this.db
-      .prepare(`
+      .prepare(
+        `
         SELECT id, project, content
         FROM memories
         WHERE project IS NULL OR project = ?
         ORDER BY id DESC
-      `)
+      `,
+      )
       .all(project ?? null) as Array<{ id: number; project: string | null; content: string }>;
 
     return rows
       .map((row) => ({
         memory: { id: row.id, project: row.project ?? undefined, content: row.content },
-        score: terms.reduce((score, term) => score + (row.content.toLowerCase().includes(term) ? 1 : 0), 0),
+        score: terms.reduce(
+          (score, term) => score + (row.content.toLowerCase().includes(term) ? 1 : 0),
+          0,
+        ),
       }))
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score || b.memory.id - a.memory.id)
@@ -193,18 +200,22 @@ export class MemoryStore {
     modelTier: string;
     durationMs: number;
   }): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO routing_decisions (
         session_id, provider, model, route, model_tier, duration_ms
       ) VALUES (?, ?, ?, ?, ?, ?)
-    `).run(
-      input.sessionId,
-      input.provider,
-      input.model ?? null,
-      input.route,
-      input.modelTier,
-      input.durationMs,
-    );
+    `,
+      )
+      .run(
+        input.sessionId,
+        input.provider,
+        input.model ?? null,
+        input.route,
+        input.modelTier,
+        input.durationMs,
+      );
   }
 
   addAgentRun(input: {
@@ -218,22 +229,26 @@ export class MemoryStore {
     outputTokens?: number;
     totalTokens?: number;
   }): number {
-    const result = this.db.prepare(`
+    const result = this.db
+      .prepare(
+        `
       INSERT INTO agent_runs (
         session_id, agent, model, duration_ms, success,
         requests, input_tokens, output_tokens, total_tokens
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      input.sessionId,
-      input.agent,
-      input.model ?? null,
-      input.durationMs,
-      input.success ? 1 : 0,
-      input.requests ?? 0,
-      input.inputTokens ?? 0,
-      input.outputTokens ?? 0,
-      input.totalTokens ?? 0,
-    );
+    `,
+      )
+      .run(
+        input.sessionId,
+        input.agent,
+        input.model ?? null,
+        input.durationMs,
+        input.success ? 1 : 0,
+        input.requests ?? 0,
+        input.inputTokens ?? 0,
+        input.outputTokens ?? 0,
+        input.totalTokens ?? 0,
+      );
     return Number(result.lastInsertRowid);
   }
 
@@ -250,25 +265,31 @@ export class MemoryStore {
     inputTokens?: number;
     outputTokens?: number;
   }): void {
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO model_usage (
         agent_run_id, session_id, provider, model, outcome,
         duration_ms, input_tokens, output_tokens
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      input.agentRunId,
-      input.sessionId,
-      input.provider,
-      input.model ?? null,
-      input.outcome,
-      input.durationMs,
-      input.inputTokens ?? 0,
-      input.outputTokens ?? 0,
-    );
+    `,
+      )
+      .run(
+        input.agentRunId,
+        input.sessionId,
+        input.provider,
+        input.model ?? null,
+        input.outcome,
+        input.durationMs,
+        input.inputTokens ?? 0,
+        input.outputTokens ?? 0,
+      );
   }
 
   getStats(): Stats {
-    const usage = this.db.prepare(`
+    const usage = this.db
+      .prepare(
+        `
       SELECT
         COUNT(*) AS runs,
         COALESCE(SUM(success), 0) AS successfulRuns,
@@ -278,13 +299,17 @@ export class MemoryStore {
         COALESCE(SUM(total_tokens), 0) AS totalTokens,
         COALESCE(AVG(duration_ms), 0) AS averageDurationMs
       FROM agent_runs
-    `).get() as Record<string, number>;
+    `,
+      )
+      .get() as Record<string, number>;
 
     // Provider/model performance comes from per-invocation model_usage rows so
     // tokens and latency follow the model that actually served each call. Runs
     // recorded before model_usage existed have no invocation rows and keep their
     // original agent_runs attribution, so existing databases stay readable.
-    const providerModels = this.db.prepare(`
+    const providerModels = this.db
+      .prepare(
+        `
       SELECT
         model,
         SUM(runs) AS runs,
@@ -322,33 +347,44 @@ export class MemoryStore {
       )
       GROUP BY model
       ORDER BY runs DESC, model
-    `).all().map((row) => {
-      const item = row as Record<string, string | number>;
-      return {
-        model: String(item.model),
-        runs: Number(item.runs),
-        successfulRuns: Number(item.successfulRuns),
-        requests: Number(item.requests),
-        inputTokens: Number(item.inputTokens),
-        outputTokens: Number(item.outputTokens),
-        totalTokens: Number(item.totalTokens),
-        averageDurationMs: Math.round(Number(item.totalDurationMs) / Number(item.runs)),
-      };
-    });
+    `,
+      )
+      .all()
+      .map((row) => {
+        const item = row as Record<string, string | number>;
+        return {
+          model: String(item.model),
+          runs: Number(item.runs),
+          successfulRuns: Number(item.successfulRuns),
+          requests: Number(item.requests),
+          inputTokens: Number(item.inputTokens),
+          outputTokens: Number(item.outputTokens),
+          totalTokens: Number(item.totalTokens),
+          averageDurationMs: Math.round(Number(item.totalDurationMs) / Number(item.runs)),
+        };
+      });
 
-    const routes = this.db.prepare(`
+    const routes = this.db
+      .prepare(
+        `
       SELECT provider, route, COUNT(*) AS count
       FROM routing_decisions
       GROUP BY provider, route
       ORDER BY provider, count DESC, route
-    `).all() as Stats["routes"];
+    `,
+      )
+      .all() as Stats["routes"];
 
-    const tiers = this.db.prepare(`
+    const tiers = this.db
+      .prepare(
+        `
       SELECT provider, model_tier AS modelTier, COUNT(*) AS count
       FROM routing_decisions
       GROUP BY provider, model_tier
       ORDER BY provider, count DESC, model_tier
-    `).all() as Stats["tiers"];
+    `,
+      )
+      .all() as Stats["tiers"];
 
     return {
       runs: Number(usage.runs),

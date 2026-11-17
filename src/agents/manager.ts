@@ -20,7 +20,11 @@ export function createManager(
       "Own the conversation and final answer. Inspect and synthesise specialist work rather than blindly repeating it.",
       "Use specialist agents when they can do a focused piece of work better or more cheaply.",
       "Keep answers practical, concise and direct.",
-      ...(ceoMode ? ["CEO mode: favour business/product decisions over implementation minutiae. State the recommended next action clearly. Challenge scope creep and low-value work. Surface uncertainty rather than manufacturing facts."] : []),
+      ...(ceoMode
+        ? [
+            "CEO mode: favour business/product decisions over implementation minutiae. State the recommended next action clearly. Challenge scope creep and low-value work. Surface uncertainty rather than manufacturing facts.",
+          ]
+        : []),
       "Challenge weak assumptions rather than just agreeing; prefer experiments and evidence over speculation.",
       "Treat PROJECT CONTEXT as canonical current state. Do not recommend building or validating something it says already exists without explaining why.",
       "Do not invent product audiences, pricing, features, deployment state or business facts. State unknowns explicitly.",
@@ -31,8 +35,16 @@ export function createManager(
       "Do not create unnecessary abstractions or process.",
     ].join("\n"),
     tools: [
-      researcher.asTool({ toolName: "research", toolDescription: "Delegate a focused research or fact-finding task and return the findings." }),
-      coder.asTool({ toolName: "code_review", toolDescription: "Delegate a focused coding, debugging, architecture or implementation task." }),
+      researcher.asTool({
+        toolName: "research",
+        toolDescription:
+          "Delegate a focused research or fact-finding task and return the findings.",
+      }),
+      coder.asTool({
+        toolName: "code_review",
+        toolDescription:
+          "Delegate a focused coding, debugging, architecture or implementation task.",
+      }),
     ],
   });
 }

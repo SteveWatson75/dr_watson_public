@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchGoCatalogue, normalizeGoModels, diffCatalogues, type GoModel } from "./opencode-models.js";
+import {
+  fetchGoCatalogue,
+  normalizeGoModels,
+  diffCatalogues,
+  type GoModel,
+} from "./opencode-models.js";
 
 const resources: Array<() => void> = [];
 afterEach(() => {
@@ -21,7 +26,9 @@ function stubFetch(response: unknown, status = 200): void {
   const body = JSON.stringify(response);
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(body, { status, headers: { "content-type": "application/json" } }))
+    vi.fn(
+      async () => new Response(body, { status, headers: { "content-type": "application/json" } }),
+    ),
   );
 }
 
@@ -71,24 +78,37 @@ describe("OpenCode Go catalogue discovery", () => {
 
   it("detects added, removed and changed models", () => {
     const previous: GoModel[] = [
-      { id: "mimo-v2.6-flash", created: 1, ownedBy: "opencode", raw: { id: "mimo-v2.6-flash", created: 1 } },
+      {
+        id: "mimo-v2.6-flash",
+        created: 1,
+        ownedBy: "opencode",
+        raw: { id: "mimo-v2.6-flash", created: 1 },
+      },
       { id: "beam-free", created: 1, ownedBy: "opencode", raw: { id: "beam-free", created: 1 } },
     ];
     const current: GoModel[] = [
-      { id: "mimo-v2.6-flash", created: 2, ownedBy: "opencode", raw: { id: "mimo-v2.6-flash", created: 2 } },
+      {
+        id: "mimo-v2.6-flash",
+        created: 2,
+        ownedBy: "opencode",
+        raw: { id: "mimo-v2.6-flash", created: 2 },
+      },
       { id: "kimi-k3", created: 1, ownedBy: "opencode", raw: { id: "kimi-k3", created: 1 } },
     ];
     const diff = diffCatalogues(previous, current);
     expect(diff.added.map((m) => m.id)).toEqual(["kimi-k3"]);
     expect(diff.removed.map((m) => m.id)).toEqual(["beam-free"]);
-    expect(diff.changed).toEqual([
-      { model: "mimo-v2.6-flash", field: "created", old: 1, new: 2 },
-    ]);
+    expect(diff.changed).toEqual([{ model: "mimo-v2.6-flash", field: "created", old: 1, new: 2 }]);
   });
 
   it("reports no diff when the catalogue is unchanged", () => {
     const models: GoModel[] = [
-      { id: "mimo-v2.6-flash", created: 1, ownedBy: "opencode", raw: { id: "mimo-v2.6-flash", created: 1 } },
+      {
+        id: "mimo-v2.6-flash",
+        created: 1,
+        ownedBy: "opencode",
+        raw: { id: "mimo-v2.6-flash", created: 1 },
+      },
     ];
     const diff = diffCatalogues(models, models);
     expect(diff.added).toEqual([]);

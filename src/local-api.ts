@@ -13,58 +13,111 @@ export const LOCAL_MODEL = "dr-watson-auto";
 const fallbackGoSession = `dr-watson-local-${randomUUID()}`;
 const sessionTiers = new Map<string, TaskTier>();
 const sessionRoutes = new Map<string, ModelRoute>();
-const content = z.union([z.string(), z.array(z.object({ type: z.literal("text"), text: z.string() }))]);
-const toolCall = z.object({ id: z.string(), type: z.literal("function"), function: z.object({ name: z.string(), arguments: z.string() }) });
-const message = z.object({
-  role: z.enum(["system", "developer", "user", "assistant", "tool"]),
-  content: content.nullable().optional(),
-  reasoning_content: z.string().nullable().optional(),
-  reasoning: z.string().nullable().optional(),
-  tool_calls: z.array(toolCall).optional(), tool_call_id: z.string().optional(), name: z.string().optional(),
-}).superRefine((value, ctx) => {
-  if (value.role === "tool" && !value.tool_call_id) ctx.addIssue({ code: "custom", message: "Tool messages require tool_call_id." });
-  if (value.content == null && !(value.role === "assistant" && (value.tool_calls?.length || value.reasoning_content || value.reasoning))) ctx.addIssue({ code: "custom", message: "Message content is required." });
-  if (value.tool_calls && value.role !== "assistant") ctx.addIssue({ code: "custom", message: "Only assistant messages may contain tool_calls." });
+const content = z.union([
+  z.string(),
+  z.array(z.object({ type: z.literal("text"), text: z.string() })),
+]);
+const toolCall = z.object({
+  id: z.string(),
+  type: z.literal("function"),
+  function: z.object({ name: z.string(), arguments: z.string() }),
 });
+const message = z
+  .object({
+    role: z.enum(["system", "developer", "user", "assistant", "tool"]),
+    content: content.nullable().optional(),
+    reasoning_content: z.string().nullable().optional(),
+    reasoning: z.string().nullable().optional(),
+    tool_calls: z.array(toolCall).optional(),
+    tool_call_id: z.string().optional(),
+    name: z.string().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.role === "tool" && !value.tool_call_id)
+      ctx.addIssue({ code: "custom", message: "Tool messages require tool_call_id." });
+    if (
+      value.content == null &&
+      !(
+        value.role === "assistant" &&
+        (value.tool_calls?.length || value.reasoning_content || value.reasoning)
+      )
+    )
+      ctx.addIssue({ code: "custom", message: "Message content is required." });
+    if (value.tool_calls && value.role !== "assistant")
+      ctx.addIssue({ code: "custom", message: "Only assistant messages may contain tool_calls." });
+  });
 const completionRequest = z.object({
-  model: z.literal(LOCAL_MODEL), messages: z.array(message).min(1), stream: z.boolean().optional(),
+  model: z.literal(LOCAL_MODEL),
+  messages: z.array(message).min(1),
+  stream: z.boolean().optional(),
   n: z.literal(1).optional(),
-  max_tokens: z.number().int().positive().optional(), max_completion_tokens: z.number().int().positive().optional(),
-  temperature: z.number().min(0).max(2).optional(), top_p: z.number().min(0).max(1).optional(),
-  stop: z.union([z.string(), z.array(z.string())]).nullable().optional(),
-  tools: z.array(z.object({ type: z.literal("function"), function: z.object({
-    name: z.string(), description: z.string().optional(), parameters: z.record(z.string(), z.unknown()), strict: z.boolean().nullable().optional(),
-  }) })).optional(),
-  tool_choice: z.union([z.enum(["auto", "none", "required"]), z.object({ type: z.literal("function"), function: z.object({ name: z.string() }) })]).optional(),
+  max_tokens: z.number().int().positive().optional(),
+  max_completion_tokens: z.number().int().positive().optional(),
+  temperature: z.number().min(0).max(2).optional(),
+  top_p: z.number().min(0).max(1).optional(),
+  stop: z
+    .union([z.string(), z.array(z.string())])
+    .nullable()
+    .optional(),
+  tools: z
+    .array(
+      z.object({
+        type: z.literal("function"),
+        function: z.object({
+          name: z.string(),
+          description: z.string().optional(),
+          parameters: z.record(z.string(), z.unknown()),
+          strict: z.boolean().nullable().optional(),
+        }),
+      }),
+    )
+    .optional(),
+  tool_choice: z
+    .union([
+      z.enum(["auto", "none", "required"]),
+      z.object({ type: z.literal("function"), function: z.object({ name: z.string() }) }),
+    ])
+    .optional(),
   parallel_tool_calls: z.boolean().optional(),
   stream_options: z.object({ include_usage: z.boolean().optional() }).optional(),
 });
 type CompletionInput = z.infer<typeof completionRequest>;
 type ChatMessage = CompletionInput["messages"][number];
-export type CompletionTransport = (route: ModelRoute, body: OpenAI.ChatCompletionCreateParamsNonStreaming, sessionId?: string) => Promise<OpenAI.ChatCompletion>;
+export type CompletionTransport = (
+  route: ModelRoute,
+  body: OpenAI.ChatCompletionCreateParamsNonStreaming,
+  sessionId?: string,
+) => Promise<OpenAI.ChatCompletion>;
 
 const transport: CompletionTransport = async (route, body, sessionId) => {
   const settings = providerSettings(route.provider, route.model);
   const client = new OpenAI({
-    apiKey: settings.apiKey, baseURL: settings.baseUrl, maxRetries: 0, timeout: 60_000,
-    defaultHeaders: route.provider === "opencode"
-      ? { "User-Agent": "dr-watson/0.1.0", "x-opencode-session": sessionId ?? fallbackGoSession }
-      : undefined,
+    apiKey: settings.apiKey,
+    baseURL: settings.baseUrl,
+    maxRetries: 0,
+    timeout: 60_000,
+    defaultHeaders:
+      route.provider === "opencode"
+        ? { "User-Agent": "dr-watson/0.1.0", "x-opencode-session": sessionId ?? fallbackGoSession }
+        : undefined,
   });
   return client.chat.completions.create(body);
 };
 
 const tierRank: Record<TaskTier, number> = { cheap: 0, standard: 1, hard: 2 };
-const continuationOnly = /^(?:continue|go on|proceed|carry on|keep going|do it|go ahead|yes|ok|okay)[.!\s]*$/i;
+const continuationOnly =
+  /^(?:continue|go on|proceed|carry on|keep going|do it|go ahead|yes|ok|okay)[.!\s]*$/i;
 // Mirrors provider-chain CODE_REVIEW_REQUEST so bounded-mode review requests can be
 // detected here without importing the routing module.
-const REVIEW_REQUEST = /\b(?:code review|(?:pull request|pr) review|review(?:ing)? (?:of )?(?:(?:this|the|my|these) )?(?:pull request|pr|code|changes|diff))\b/i;
+const REVIEW_REQUEST =
+  /\b(?:code review|(?:pull request|pr) review|review(?:ing)? (?:of )?(?:(?:this|the|my|these) )?(?:pull request|pr|code|changes|diff))\b/i;
 export const BOUNDED_REVIEW_MARKER = /BOUNDED REVIEW MODE/;
 const BOUNDED_REVIEW_INSTRUCTION = `BOUNDED REVIEW MODE: Review only the PR description, the linked issue, and the file diff already provided. Do not call tools, fetch additional files or commits, or search. Write the review now and end with **Approved** or **Has blocking changes needed**.`;
 
 function messageText(value: ChatMessage): string {
-  return typeof value.content === "string" ? value.content
-    : value.content?.map((part) => part.text).join("\n") ?? "";
+  return typeof value.content === "string"
+    ? value.content
+    : (value.content?.map((part) => part.text).join("\n") ?? "");
 }
 
 function normalized(text: string): string {
@@ -74,7 +127,11 @@ function normalized(text: string): string {
 export function isOpenCodeStateSummary(text: string): boolean {
   const markers = ["objective", "requirements", "work state", "next move"];
   const lower = text.toLowerCase();
-  return markers.filter((marker) => new RegExp(`(?:^|\\n)#{0,3}\\s*${marker}\\s*(?:\\n|$)`, "i").test(lower)).length >= 3;
+  return (
+    markers.filter((marker) =>
+      new RegExp(`(?:^|\\n)#{0,3}\\s*${marker}\\s*(?:\\n|$)`, "i").test(lower),
+    ).length >= 3
+  );
 }
 
 export function isOpenCodeCompactionRequest(messages: CompletionInput["messages"]): boolean {
@@ -83,13 +140,22 @@ export function isOpenCodeCompactionRequest(messages: CompletionInput["messages"
   // V2's first checkpoint has a different instruction from subsequent updates.
   // Without this check its headings are mistaken for an existing state summary
   // and prepareOpenCodeMessages removes the actual compaction request.
-  if (text.startsWith("You MUST summarize the conversation above into a structured summary that will be given to another agent to resume the work.")) return true;
-  return /(?:consolidated summary|update the existing checkpoint|compaction summary|summarize the conversation into)/i.test(text);
+  if (
+    text.startsWith(
+      "You MUST summarize the conversation above into a structured summary that will be given to another agent to resume the work.",
+    )
+  )
+    return true;
+  return /(?:consolidated summary|update the existing checkpoint|compaction summary|summarize the conversation into)/i.test(
+    text,
+  );
 }
 
 function section(text: string, heading: string): string {
   const lines = text.split("\n");
-  const start = lines.findIndex((line) => new RegExp(`^#{0,3}\\s*${heading}\\s*$`, "i").test(line.trim()));
+  const start = lines.findIndex((line) =>
+    new RegExp(`^#{0,3}\\s*${heading}\\s*$`, "i").test(line.trim()),
+  );
   if (start < 0) return "";
   const body: string[] = [];
   for (let i = start + 1; i < lines.length; i += 1) {
@@ -108,15 +174,25 @@ function completedContext(text: string): string {
 function summaryTask(text: string): string {
   const objective = section(text, "Objective");
   const requirements = section(text, "Requirements");
-  return [objective && `Objective:\n${objective}`, requirements && `Requirements:\n${requirements}`].filter(Boolean).join("\n\n");
+  return [objective && `Objective:\n${objective}`, requirements && `Requirements:\n${requirements}`]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
-export function prepareOpenCodeMessages(messages: CompletionInput["messages"]): CompletionInput["messages"] {
+export function prepareOpenCodeMessages(
+  messages: CompletionInput["messages"],
+): CompletionInput["messages"] {
   if (isOpenCodeCompactionRequest(messages)) return messages;
   const summaries = messages.filter((item) => isOpenCodeStateSummary(messageText(item)));
-  const genuineUsers = messages.filter((item) => item.role === "user" && !isOpenCodeStateSummary(messageText(item))
-    && !continuationOnly.test(messageText(item).trim()));
-  const anchor = genuineUsers.length ? messageText(genuineUsers[0]!) : summaryTask(messageText(summaries.at(-1) ?? messages[0]!));
+  const genuineUsers = messages.filter(
+    (item) =>
+      item.role === "user" &&
+      !isOpenCodeStateSummary(messageText(item)) &&
+      !continuationOnly.test(messageText(item).trim()),
+  );
+  const anchor = genuineUsers.length
+    ? messageText(genuineUsers[0]!)
+    : summaryTask(messageText(summaries.at(-1) ?? messages[0]!));
   const latestProgress = completedContext(messageText(summaries.at(-1) ?? messages[0]!));
   const seenUsers = new Set<string>();
   const result: CompletionInput["messages"] = [];
@@ -133,7 +209,10 @@ export function prepareOpenCodeMessages(messages: CompletionInput["messages"]): 
       seenUsers.add(key);
     }
     if (!injectedAnchor && anchor && item.role !== "system" && item.role !== "developer") {
-      result.push({ role: "developer", content: `Task anchor (original user intent):\n${anchor}\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.` });
+      result.push({
+        role: "developer",
+        content: `Task anchor (original user intent):\n${anchor}\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.`,
+      });
       if (latestProgress) result.push({ role: "developer", content: latestProgress });
       injectedAnchor = true;
     }
@@ -141,7 +220,10 @@ export function prepareOpenCodeMessages(messages: CompletionInput["messages"]): 
   }
 
   if (!injectedAnchor && anchor) {
-    result.push({ role: "developer", content: `Task anchor (original user intent):\n${anchor}\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.` });
+    result.push({
+      role: "developer",
+      content: `Task anchor (original user intent):\n${anchor}\n\nStay focused on this task until completion. Do not restart completed reconnaissance unless a concrete tool/test failure requires it.`,
+    });
     if (latestProgress) result.push({ role: "developer", content: latestProgress });
     if (!genuineUsers.length) result.push({ role: "user", content: anchor });
   } else if (!genuineUsers.length && anchor && !result.some((item) => item.role === "user")) {
@@ -157,7 +239,9 @@ export function prepareOpenCodeMessages(messages: CompletionInput["messages"]): 
 // When a review request is detected, a boundary developer message is injected that
 // forbids tool use and requires a single-pass review from the provided context,
 // which is what actually breaks the continual research loop.
-export function prepareGithubActionMessages(messages: CompletionInput["messages"]): CompletionInput["messages"] {
+export function prepareGithubActionMessages(
+  messages: CompletionInput["messages"],
+): CompletionInput["messages"] {
   const seenUsers = new Set<string>();
   const result: CompletionInput["messages"] = [];
   const alreadyHasBoundary = messages.some((item) => BOUNDED_REVIEW_MARKER.test(messageText(item)));
@@ -191,8 +275,14 @@ export function prepareGithubActionMessages(messages: CompletionInput["messages"
   return result;
 }
 
-export function conversationTier(messages: CompletionInput["messages"], fallback?: TaskTier, githubAction = false): TaskTier {
-  const prepared = githubAction ? prepareGithubActionMessages(messages) : prepareOpenCodeMessages(messages);
+export function conversationTier(
+  messages: CompletionInput["messages"],
+  fallback?: TaskTier,
+  githubAction = false,
+): TaskTier {
+  const prepared = githubAction
+    ? prepareGithubActionMessages(messages)
+    : prepareOpenCodeMessages(messages);
   let selected: TaskTier = fallback ?? "cheap";
   for (const item of prepared) {
     // Once OpenCode starts invoking tools, this is an agentic task rather than a
@@ -236,69 +326,155 @@ function rememberSessionRoute(sessionId: string | undefined, route: ModelRoute):
   if (sessionRoutes.size > 1000) sessionRoutes.delete(sessionRoutes.keys().next().value!);
 }
 
-export async function routedCompletion(input: CompletionInput, options: {
-  ledger?: BudgetLedger; transport?: CompletionTransport; log?: (line: string) => void; sessionId?: string;
-  githubAction?: boolean;
-  // Dedicated trusted review entrypoint supplies policy/context, never caller messages.
-  reviewRoutes?: ModelRoute[];
-  failover?: (error: unknown) => boolean;
-} = {}): Promise<{ completion: OpenAI.ChatCompletion; route: string }> {
+export async function routedCompletion(
+  input: CompletionInput,
+  options: {
+    ledger?: BudgetLedger;
+    transport?: CompletionTransport;
+    log?: (line: string) => void;
+    sessionId?: string;
+    githubAction?: boolean;
+    // Dedicated trusted review entrypoint supplies policy/context, never caller messages.
+    reviewRoutes?: ModelRoute[];
+    failover?: (error: unknown) => boolean;
+  } = {},
+): Promise<{ completion: OpenAI.ChatCompletion; route: string }> {
   const compaction = isOpenCodeCompactionRequest(input.messages);
   const rememberedTier = options.sessionId ? sessionTiers.get(options.sessionId) : undefined;
   const rememberedRoute = options.sessionId ? sessionRoutes.get(options.sessionId) : undefined;
   const tier = conversationTier(input.messages, rememberedTier, options.githubAction);
   rememberSessionTier(options.sessionId, tier);
-  const preparedMessages = options.reviewRoutes || rememberedRoute || compaction ? input.messages
-    : options.githubAction ? prepareGithubActionMessages(input.messages)
-    : prepareOpenCodeMessages(input.messages);
+  const preparedMessages =
+    options.reviewRoutes || rememberedRoute || compaction
+      ? input.messages
+      : options.githubAction
+        ? prepareGithubActionMessages(input.messages)
+        : prepareOpenCodeMessages(input.messages);
   const routes = options.reviewRoutes ?? sessionModelRoutes(tier, options.sessionId);
   let selectedRoute = "";
-  const model = guardedModel(routes, options.ledger ?? budgetLedger(), async (route) => ({
-    async getResponse(request) {
-      const settings = providerSettings(route.provider, route.model);
-      const { stream_options: _streamOptions, max_completion_tokens: _maxCompletion, ...body } = JSON.parse(String(request.input)) as CompletionInput;
-      selectedRoute = `${route.provider}:${settings.model}`;
-      (options.log ?? console.info)(`Local API tier: ${tier}; route: ${selectedRoute}`);
-      const messages = route.provider === "opencode"
-        ? body.messages.map((message) => message.role === "developer" ? { ...message, role: "system" as const } : message)
-        : body.messages;
-      const completion = await (options.transport ?? transport)(route, {
-        ...body, messages, model: settings.model, stream: false, max_tokens: request.modelSettings.maxTokens,
-      } as OpenAI.ChatCompletionCreateParamsNonStreaming, options.sessionId);
-      rememberSessionRoute(options.sessionId, route);
-      return { output: [], usage: new Usage({ requests: 1, inputTokens: completion.usage?.prompt_tokens ?? 0,
-        outputTokens: completion.usage?.completion_tokens ?? 0 }), providerData: { completion } };
-    },
-    async *getStreamedResponse() { throw new Error("Provider streaming is disabled."); },
-  }), undefined, undefined, options.failover);
+  const model = guardedModel(
+    routes,
+    options.ledger ?? budgetLedger(),
+    async (route) => ({
+      async getResponse(request) {
+        const settings = providerSettings(route.provider, route.model);
+        const {
+          stream_options: _streamOptions,
+          max_completion_tokens: _maxCompletion,
+          ...body
+        } = JSON.parse(String(request.input)) as CompletionInput;
+        selectedRoute = `${route.provider}:${settings.model}`;
+        (options.log ?? console.info)(`Local API tier: ${tier}; route: ${selectedRoute}`);
+        const messages =
+          route.provider === "opencode"
+            ? body.messages.map((message) =>
+                message.role === "developer" ? { ...message, role: "system" as const } : message,
+              )
+            : body.messages;
+        const completion = await (options.transport ?? transport)(
+          route,
+          {
+            ...body,
+            messages,
+            model: settings.model,
+            stream: false,
+            max_tokens: request.modelSettings.maxTokens,
+          } as OpenAI.ChatCompletionCreateParamsNonStreaming,
+          options.sessionId,
+        );
+        rememberSessionRoute(options.sessionId, route);
+        return {
+          output: [],
+          usage: new Usage({
+            requests: 1,
+            inputTokens: completion.usage?.prompt_tokens ?? 0,
+            outputTokens: completion.usage?.completion_tokens ?? 0,
+          }),
+          providerData: { completion },
+        };
+      },
+      async *getStreamedResponse() {
+        throw new Error("Provider streaming is disabled.");
+      },
+    }),
+    undefined,
+    undefined,
+    options.failover,
+  );
   const preparedInput: CompletionInput = { ...input, messages: preparedMessages };
-  const request: ModelRequest = { input: JSON.stringify(preparedInput), modelSettings: {
-    maxTokens: Math.min(input.max_tokens ?? 8192, input.max_completion_tokens ?? 8192, 8192),
-  }, tools: [], handoffs: [], outputType: "text", tracing: false };
+  const request: ModelRequest = {
+    input: JSON.stringify(preparedInput),
+    modelSettings: {
+      maxTokens: Math.min(input.max_tokens ?? 8192, input.max_completion_tokens ?? 8192, 8192),
+    },
+    tools: [],
+    handoffs: [],
+    outputType: "text",
+    tracing: false,
+  };
   const result = await model.getResponse(request);
-  return { completion: result.providerData!.completion as OpenAI.ChatCompletion, route: selectedRoute };
+  return {
+    completion: result.providerData!.completion as OpenAI.ChatCompletion,
+    route: selectedRoute,
+  };
 }
 
 function publicCompletion(completion: OpenAI.ChatCompletion) {
-  return { id: completion.id || `chatcmpl-${randomUUID()}`, object: "chat.completion", created: completion.created,
-    model: LOCAL_MODEL, choices: completion.choices.map((choice) => {
-      const upstream = choice.message as unknown as { reasoning_content?: string | null; reasoning?: string | null };
-      return { index: choice.index, finish_reason: choice.finish_reason,
-        message: { role: "assistant", content: choice.message.content,
-          ...(upstream.reasoning_content != null ? { reasoning_content: upstream.reasoning_content } : {}),
+  return {
+    id: completion.id || `chatcmpl-${randomUUID()}`,
+    object: "chat.completion",
+    created: completion.created,
+    model: LOCAL_MODEL,
+    choices: completion.choices.map((choice) => {
+      const upstream = choice.message as unknown as {
+        reasoning_content?: string | null;
+        reasoning?: string | null;
+      };
+      return {
+        index: choice.index,
+        finish_reason: choice.finish_reason,
+        message: {
+          role: "assistant",
+          content: choice.message.content,
+          ...(upstream.reasoning_content != null
+            ? { reasoning_content: upstream.reasoning_content }
+            : {}),
           ...(upstream.reasoning != null ? { reasoning: upstream.reasoning } : {}),
-          ...(choice.message.tool_calls ? { tool_calls: choice.message.tool_calls } : {}) } };
+          ...(choice.message.tool_calls ? { tool_calls: choice.message.tool_calls } : {}),
+        },
+      };
     }),
-    ...(completion.usage ? { usage: completion.usage } : {}) };
+    ...(completion.usage ? { usage: completion.usage } : {}),
+  };
 }
 
-function streamCompletion(completion: ReturnType<typeof publicCompletion>, includeUsage: boolean): string {
-  const chunk = (choices: unknown[], usage?: unknown) => `data: ${JSON.stringify({ id: completion.id, object: "chat.completion.chunk",
-    created: completion.created, model: LOCAL_MODEL, choices, ...(usage ? { usage } : {}) })}\n\n`;
+function streamCompletion(
+  completion: ReturnType<typeof publicCompletion>,
+  includeUsage: boolean,
+): string {
+  const chunk = (choices: unknown[], usage?: unknown) =>
+    `data: ${JSON.stringify({
+      id: completion.id,
+      object: "chat.completion.chunk",
+      created: completion.created,
+      model: LOCAL_MODEL,
+      choices,
+      ...(usage ? { usage } : {}),
+    })}\n\n`;
   let result = "";
   for (const choice of completion.choices) {
-    result += chunk([{ index: choice.index, delta: { ...choice.message,
-      ...(choice.message.tool_calls ? { tool_calls: choice.message.tool_calls.map((tool, index) => ({ ...tool, index })) } : {}) }, finish_reason: null }]);
+    result += chunk([
+      {
+        index: choice.index,
+        delta: {
+          ...choice.message,
+          ...(choice.message.tool_calls
+            ? { tool_calls: choice.message.tool_calls.map((tool, index) => ({ ...tool, index })) }
+            : {}),
+        },
+        finish_reason: null,
+      },
+    ]);
     result += chunk([{ index: choice.index, delta: {}, finish_reason: choice.finish_reason }]);
   }
   if (includeUsage && completion.usage) result += chunk([], completion.usage);
@@ -308,7 +484,8 @@ function streamCompletion(completion: ReturnType<typeof publicCompletion>, inclu
 // Upstream provider failures can echo request credentials back in their error
 // text. Redact every configured credential plus common credential shapes before
 // anything leaves the local API so callers only ever see a safe hint.
-const credentialShapes = /(?:sk|pk|rk)[-_][A-Za-z0-9_-]{8,}|bearer\s+[A-Za-z0-9._~+/=-]{8,}|authorization\s*[:=]\s*[A-Za-z0-9._~+/=-]{8,}/gi;
+const credentialShapes =
+  /(?:sk|pk|rk)[-_][A-Za-z0-9_-]{8,}|bearer\s+[A-Za-z0-9._~+/=-]{8,}|authorization\s*[:=]\s*[A-Za-z0-9._~+/=-]{8,}/gi;
 
 function configuredCredentials(): string[] {
   const keys = new Set<string>();
@@ -342,21 +519,35 @@ function headerValue(value: string | string[] | undefined): string | undefined {
 // `x-dr-watson-mode: github-action` request header or a `DR_WATSON_MODE` environment
 // variable on the local API process. Implementation jobs omit both and keep the
 // normal coding-session anchoring.
-export function isGithubActionMode(headers: Record<string, string | string[] | undefined>, env: string | undefined): boolean {
+export function isGithubActionMode(
+  headers: Record<string, string | string[] | undefined>,
+  env: string | undefined,
+): boolean {
   return headerValue(headers["x-dr-watson-mode"]) === "github-action" || env === "github-action";
 }
 
 export function createLocalApi(options: Parameters<typeof routedCompletion>[1] = {}): Server {
   return createServer(async (req, res) => {
-    const json = (status: number, value: unknown) => { res.writeHead(status, { "content-type": "application/json" }); res.end(JSON.stringify(value)); };
+    const json = (status: number, value: unknown) => {
+      res.writeHead(status, { "content-type": "application/json" });
+      res.end(JSON.stringify(value));
+    };
     if (req.headers.origin || !/^127\.0\.0\.1(?::\d+)?$/.test(req.headers.host ?? "")) {
-      json(403, { error: { message: "Only local CLI requests are allowed.", type: "invalid_request_error" } }); return;
+      json(403, {
+        error: { message: "Only local CLI requests are allowed.", type: "invalid_request_error" },
+      });
+      return;
     }
     if (req.method === "GET" && req.url === "/v1/models") {
-      json(200, { object: "list", data: [{ id: LOCAL_MODEL, object: "model", created: 0, owned_by: "dr-watson" }] }); return;
+      json(200, {
+        object: "list",
+        data: [{ id: LOCAL_MODEL, object: "model", created: 0, owned_by: "dr-watson" }],
+      });
+      return;
     }
     if (req.method !== "POST" || req.url !== "/v1/chat/completions") {
-      json(404, { error: { message: "Unknown endpoint.", type: "invalid_request_error" } }); return;
+      json(404, { error: { message: "Unknown endpoint.", type: "invalid_request_error" } });
+      return;
     }
     let body: CompletionInput;
     try {
@@ -364,17 +555,33 @@ export function createLocalApi(options: Parameters<typeof routedCompletion>[1] =
       let size = 0;
       for await (const buffer of req) {
         size += buffer.length;
-        if (size > 4 * 1024 * 1024) { json(413, { error: { message: "Request exceeds 4 MiB.", type: "invalid_request_error" } }); return; }
+        if (size > 4 * 1024 * 1024) {
+          json(413, {
+            error: { message: "Request exceeds 4 MiB.", type: "invalid_request_error" },
+          });
+          return;
+        }
         buffers.push(buffer);
       }
       body = completionRequest.parse(JSON.parse(Buffer.concat(buffers).toString("utf8")));
     } catch {
-      json(400, { error: { message: "Invalid request. Use dr-watson-auto with text messages and optional function tools.", type: "invalid_request_error" } }); return;
+      json(400, {
+        error: {
+          message:
+            "Invalid request. Use dr-watson-auto with text messages and optional function tools.",
+          type: "invalid_request_error",
+        },
+      });
+      return;
     }
     try {
       const sessionId = headerValue(req.headers["x-opencode-session"]);
       const githubAction = isGithubActionMode(req.headers, process.env.DR_WATSON_MODE);
-      const { completion, route } = await routedCompletion(body, { ...options, sessionId, githubAction });
+      const { completion, route } = await routedCompletion(body, {
+        ...options,
+        sessionId,
+        githubAction,
+      });
       res.setHeader("x-dr-watson-route", route);
       const result = publicCompletion(completion);
       if (body.stream) {
@@ -382,7 +589,8 @@ export function createLocalApi(options: Parameters<typeof routedCompletion>[1] =
         res.end(streamCompletion(result, Boolean(body.stream_options?.include_usage)));
       } else json(200, result);
     } catch (error) {
-      json(502, { error: { message: redactProviderError(error), type: "server_error" } }); return;
+      json(502, { error: { message: redactProviderError(error), type: "server_error" } });
+      return;
     }
   });
 }

@@ -1,4 +1,9 @@
-import { fetchGoCatalogue, normalizeGoModels, diffCatalogues, type GoModel } from "./providers/opencode-models.js";
+import {
+  fetchGoCatalogue,
+  normalizeGoModels,
+  diffCatalogues,
+  type GoModel,
+} from "./providers/opencode-models.js";
 import { CatalogueStore } from "./providers/opencode-catalogue.js";
 import { approvedOpenCodeModelIds } from "./providers/model-catalogue.js";
 
@@ -36,19 +41,26 @@ async function run(): Promise<number> {
   }
   store.close();
 
-  const diff = previous ? diffCatalogues(previous, models)
+  const diff = previous
+    ? diffCatalogues(previous, models)
     : { added: models, removed: [], changed: [] };
   const routed = approvedOpenCodeModelIds();
 
   if (json) {
-    console.log(JSON.stringify({
-      checkedAt,
-      total: models.length,
-      added: diff.added.map((model) => model.id),
-      removed: diff.removed.map((model) => model.id),
-      changed: diff.changed,
-      candidates: diff.added.filter((model) => !routed.has(model.id)).map((model) => model.id),
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          checkedAt,
+          total: models.length,
+          added: diff.added.map((model) => model.id),
+          removed: diff.removed.map((model) => model.id),
+          changed: diff.changed,
+          candidates: diff.added.filter((model) => !routed.has(model.id)).map((model) => model.id),
+        },
+        null,
+        2,
+      ),
+    );
     return 0;
   }
 

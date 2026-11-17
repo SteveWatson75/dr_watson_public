@@ -8,6 +8,8 @@
     "check-models": "tsx src/check-models.ts",
     "evaluate-models": "tsx src/evaluation/evaluate-models.ts",
     "dev": "tsx src/index.ts",
+    "format": "prettier --write \"src/**/*.ts\" package.json tsconfig.json .prettierrc.json",
+    "format:check": "prettier --check \"src/**/*.ts\" package.json tsconfig.json .prettierrc.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "latest",
+    "prettier": "3.10.1",
     "tsx": "latest",
     "typescript": "latest",
     "vitest": "latest"
