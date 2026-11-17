@@ -5,11 +5,6 @@ import type { ChatMessage, CompletionInput } from "./protocol.js";
 export const TIER_RANK: Readonly<Record<TaskTier, number>> = { cheap: 0, standard: 1, hard: 2 };
 const continuationOnly =
   /^(?:continue|go on|proceed|carry on|keep going|do it|go ahead|yes|ok|okay)[.!\s]*$/i;
-// Mirrors provider-chain CODE_REVIEW_REQUEST for bounded-mode review detection.
-const REVIEW_REQUEST =
-  /\b(?:code review|(?:pull request|pr) review|review(?:ing)? (?:of )?(?:(?:this|the|my|these) )?(?:pull request|pr|code|changes|diff))\b/i;
-export const BOUNDED_REVIEW_MARKER = /BOUNDED REVIEW MODE/;
-const BOUNDED_REVIEW_INSTRUCTION = `BOUNDED REVIEW MODE: Review only the PR description, the linked issue, and the file diff already provided. Do not call tools, fetch additional files or commits, or search. Write the review now and end with **Approved** or **Has blocking changes needed**.`;
 
 function messageText(value: ChatMessage): string {
   return typeof value.content === "string"
@@ -134,17 +129,11 @@ export function prepareOpenCodeMessages(
 // not be re-anchored to a coding task, because that anchoring drives the agent back
 // into open-ended reconnaissance. This path keeps the caller's messages (minus
 // continuation noise) and never injects a task anchor or a synthetic user turn.
-// When a review request is detected, a boundary developer message is injected that
-// forbids tool use and requires a single-pass review from the provided context,
-// which is what actually breaks the continual research loop.
 export function prepareGithubActionMessages(
   messages: CompletionInput["messages"],
 ): CompletionInput["messages"] {
   const seenUsers = new Set<string>();
   const result: CompletionInput["messages"] = [];
-  const alreadyHasBoundary = messages.some((item) => BOUNDED_REVIEW_MARKER.test(messageText(item)));
-  let reviewDetected = false;
-  let boundaryInjected = alreadyHasBoundary;
 
   for (const item of messages) {
     const text = messageText(item);
@@ -154,17 +143,6 @@ export function prepareGithubActionMessages(
       const key = normalizeUserText(text);
       if (seenUsers.has(key)) continue;
       seenUsers.add(key);
-      if (REVIEW_REQUEST.test(text)) reviewDetected = true;
-    }
-
-    if (
-      reviewDetected &&
-      !boundaryInjected &&
-      item.role !== "system" &&
-      item.role !== "developer"
-    ) {
-      result.push({ role: "developer", content: BOUNDED_REVIEW_INSTRUCTION });
-      boundaryInjected = true;
     }
 
     result.push(item);

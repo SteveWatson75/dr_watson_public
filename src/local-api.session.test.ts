@@ -4,7 +4,6 @@ import { BudgetLedger } from "./budget.js";
 import { config } from "./config.js";
 import {
   LOCAL_MODEL,
-  BOUNDED_REVIEW_MARKER,
   conversationTier,
   prepareGithubActionMessages,
   routedCompletion,
@@ -148,19 +147,20 @@ describe("OpenCode session routing", () => {
       { role: "user", content: "Review the pull request" },
     ]);
     expect(prepared).toEqual([
-      { role: "developer", content: expect.stringContaining("BOUNDED REVIEW MODE") },
       { role: "user", content: "Review the pull request" },
       { role: "assistant", content: "I read the diff" },
     ]);
     expect(JSON.stringify(prepared)).not.toContain("Task anchor");
   });
 
-  it("skips coding-session anchoring for bounded GitHub Actions requests", async () => {
+  it("preserves review tool-use instructions without coding-session anchoring in GitHub Actions mode", async () => {
+    const task =
+      "Review the changes in this pull request. Read .git/review-pr.json, inspect git diff and use git show for relevant files.";
     await routedCompletion(
       {
         model: LOCAL_MODEL,
         messages: [
-          { role: "user", content: "Review the changes in this pull request" },
+          { role: "user", content: task },
           { role: "assistant", content: "I read the changed files" },
           { role: "user", content: "Continue" },
         ],
@@ -171,7 +171,11 @@ describe("OpenCode session routing", () => {
 
     const body = transport.mock.calls[0]![1];
     expect(JSON.stringify(body.messages)).not.toContain("Task anchor");
-    expect(JSON.stringify(body.messages)).toContain("BOUNDED REVIEW MODE");
+    expect(body.messages).toEqual([
+      { role: "user", content: task },
+      { role: "assistant", content: "I read the changed files" },
+    ]);
+    expect(JSON.stringify(body.messages)).not.toContain("BOUNDED REVIEW MODE");
   });
 
   it("still anchors coding sessions when GitHub Actions mode is off", async () => {
@@ -200,8 +204,7 @@ describe("OpenCode session routing", () => {
     const userMessages = prepared.filter((item) => item.role === "user");
     expect(userMessages).toHaveLength(1);
     expect(userMessages[0]!.content).toBe("Review the changes in this pull request");
-    expect(prepared[0]!.role).toBe("developer");
-    expect(prepared[0]!.content).toContain("BOUNDED REVIEW MODE");
+    expect(prepared.map((item) => item.role)).toEqual(["user", "assistant"]);
   });
 
   it("preserves assistant and tool messages without re-anchoring in GitHub Actions mode", () => {
@@ -213,7 +216,6 @@ describe("OpenCode session routing", () => {
       { role: "user", content: "Continue" },
     ]);
     expect(prepared).toEqual([
-      { role: "developer", content: expect.stringContaining("BOUNDED REVIEW MODE") },
       { role: "user", content: "Review the pull request" },
       { role: "assistant", content: "I read the changed files" },
       { role: "tool", tool_call_id: "call-1", content: "diff content here" },
@@ -237,7 +239,7 @@ describe("OpenCode session routing", () => {
 
     const body = transport.mock.calls[0]![1];
     expect(JSON.stringify(body.messages)).not.toContain("Task anchor");
-    expect(JSON.stringify(body.messages)).toContain("BOUNDED REVIEW MODE");
+    expect(JSON.stringify(body.messages)).not.toContain("BOUNDED REVIEW MODE");
     expect(body.messages.filter((item) => item.role === "user")).toHaveLength(1);
   });
 
@@ -259,16 +261,17 @@ describe("OpenCode session routing", () => {
     expect(JSON.stringify(prepared)).not.toContain("Task anchor");
   });
 
-  it("does not duplicate BOUNDED REVIEW MODE when already present in the message history", () => {
-    const prepared = prepareGithubActionMessages([
-      { role: "developer", content: "BOUNDED REVIEW MODE: Review only the PR description." },
+  it("preserves supplied review instructions without injecting a tool prohibition", () => {
+    const messages: Parameters<typeof prepareGithubActionMessages>[0] = [
+      { role: "system", content: "Use only the permitted read-only tools." },
+      {
+        role: "developer",
+        content: "Read PR metadata, inspect git diff and use git show for supporting files.",
+      },
       { role: "user", content: "Review the pull request" },
       { role: "assistant", content: "I read the diff" },
-    ]);
-    const boundaryCount = prepared.filter((item) =>
-      BOUNDED_REVIEW_MARKER.test(String(item.content)),
-    ).length;
-    expect(boundaryCount).toBe(1);
+    ];
+    expect(prepareGithubActionMessages(messages)).toEqual(messages);
   });
 
   it("upgrades a cheap session to the coding tier when OpenCode starts using tools", async () => {
