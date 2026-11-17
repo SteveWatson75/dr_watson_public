@@ -4,6 +4,19 @@ import { modelRoutes, taskTier } from "./provider-chain.js";
 
 describe("task routing", () => {
   it.each([
+    ["", "cheap"],
+    ["ordinary question", "cheap"],
+    ["x".repeat(1200), "cheap"],
+    ["x".repeat(1201), "standard"],
+    ["Summarize this implementation across the repo", "cheap"],
+    ["Make a small edit to review this code", "hard"],
+    ["Consolidated summary of the architecture review", "standard"],
+    ["IMPLEMENT the feature", "standard"],
+  ] as const)("preserves default, boundary and precedence behavior (%s)", (message, tier) => {
+    expect(taskTier(message)).toBe(tier);
+  });
+
+  it.each([
     ["Summarize these notes", "cheap", "opencode", "mimo-v2.6-flash"],
     ["Make a small code edit", "cheap", "opencode", "mimo-v2.6-flash"],
     ["Implement issue #19 across the repo", "standard", "opencode", "mimo-v2.6-pro"],

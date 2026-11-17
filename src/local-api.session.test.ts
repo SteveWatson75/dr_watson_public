@@ -28,6 +28,52 @@ afterEach(() => {
 });
 
 describe("OpenCode session routing", () => {
+  it("keeps remembered sessions' supplied messages unchanged while preserving their tier", async () => {
+    const sessionId = "characterization-remembered-hard";
+    await routedCompletion({
+      model: LOCAL_MODEL,
+      messages: [{ role: "user", content: "Review the architecture" }],
+    }, { ledger, transport, sessionId });
+    const messages = [{ role: "user" as const, content: "Continue" }];
+    const result = await routedCompletion({
+      model: LOCAL_MODEL, messages,
+    }, { ledger, transport, sessionId });
+
+    expect(result.route).toBe("opencode:qwen4-max");
+    expect(transport.mock.calls[1]![1].messages).toEqual(messages);
+  });
+
+  it("prefers a successful fallback on the next request in the same tier", async () => {
+    const sessionId = "characterization-sticky-fallback";
+    transport.mockRejectedValueOnce(Object.assign(new Error("Unavailable"), { status: 503 }));
+    const input: Parameters<typeof routedCompletion>[0] = {
+      model: LOCAL_MODEL, messages: [{ role: "user", content: "Hello" }],
+    };
+    const first = await routedCompletion(input, { ledger, transport, sessionId });
+    const second = await routedCompletion(input, { ledger, transport, sessionId });
+
+    expect(first.route).toBe("opencode:glm-5.3-flash");
+    expect(second.route).toBe(first.route);
+    expect(transport.mock.calls.map(([route]) => route.model))
+      .toEqual(["mimo-v2.6-flash", "glm-5.3-flash", "glm-5.3-flash"]);
+  });
+
+  it("uses trusted review routes without preparing or anchoring supplied messages", async () => {
+    const messages = [
+      { role: "system" as const, content: "Trusted review policy" },
+      { role: "user" as const, content: "Continue" },
+    ];
+    await routedCompletion({ model: LOCAL_MODEL, messages }, {
+      ledger, transport, reviewRoutes: [{ provider: "opencode", model: "mimo-v2.6-pro" }],
+    });
+
+    expect(transport).toHaveBeenCalledExactlyOnceWith(
+      { provider: "opencode", model: "mimo-v2.6-pro" },
+      expect.objectContaining({ messages }),
+      undefined,
+    );
+  });
+
   it("maps developer messages to system for the OpenCode Go chat-completions API", async () => {
     await routedCompletion({
       model: LOCAL_MODEL,
