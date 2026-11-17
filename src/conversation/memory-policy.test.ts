@@ -3,7 +3,13 @@ import { shouldExtractMemory } from "./memory-policy.js";
 
 describe("shouldExtractMemory", () => {
   it("is disabled by default", () => {
-    expect(shouldExtractMemory(false, "A durable decision that should otherwise qualify for memory.", "response")).toBe(false);
+    expect(
+      shouldExtractMemory(
+        false,
+        "A durable decision that should otherwise qualify for memory.",
+        "response",
+      ),
+    ).toBe(false);
   });
 
   it("ignores acknowledgements", () => {
@@ -11,6 +17,12 @@ describe("shouldExtractMemory", () => {
   });
 
   it("allows substantive exchanges", () => {
-    expect(shouldExtractMemory(true, "We decided total delivered cost should determine the cheapest basket.", "response")).toBe(true);
+    expect(
+      shouldExtractMemory(
+        true,
+        "We decided total delivered cost should determine the cheapest basket.",
+        "response",
+      ),
+    ).toBe(true);
   });
 });

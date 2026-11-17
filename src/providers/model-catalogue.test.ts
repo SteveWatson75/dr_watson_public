@@ -23,35 +23,70 @@ describe("approved model catalogue", () => {
 
   it.each([
     ["a different version", { ...modelsJson, version: MODEL_CATALOGUE_VERSION + 1 }],
-    ["a missing provider", { ...modelsJson, providers: modelsJson.providers.filter(({ id }) => id !== "anthropic") }],
-    ["an unknown tier provider", {
-      ...modelsJson,
-      tierRoutes: { ...modelsJson.tierRoutes, cheap: [{ provider: "unknown", model: "x" }] },
-    }],
-    ["a tier route without a model", {
-      ...modelsJson,
-      tierRoutes: { ...modelsJson.tierRoutes, cheap: [{ provider: "opencode" }] },
-    }],
-    ["a non-Ollama local fallback", { ...modelsJson, localFallback: { provider: "openrouter", model: "openrouter/free" } }],
-    ["a negative price", {
-      ...modelsJson,
-      pricing: modelsJson.pricing.map((price, index) => (index === 0 ? { ...price, input: -1 } : price)),
-    }],
-    ["a duplicate route", {
-      ...modelsJson,
-      tierRoutes: { ...modelsJson.tierRoutes, cheap: [
-        { provider: "opencode", model: "mimo-v2.6-flash" },
-        { provider: "opencode", model: "mimo-v2.6-flash" },
-      ] },
-    }],
-    ["an unknown routed model", {
-      ...modelsJson,
-      tierRoutes: { ...modelsJson.tierRoutes, cheap: [{ provider: "opencode", model: "mimo-v9.9-flash" }] },
-    }],
-    ["a routed model with no pricing policy", {
-      ...modelsJson,
-      tierRoutes: { ...modelsJson.tierRoutes, cheap: [{ provider: "anthropic", model: "claude-opus-4" }] },
-    }],
+    [
+      "a missing provider",
+      { ...modelsJson, providers: modelsJson.providers.filter(({ id }) => id !== "anthropic") },
+    ],
+    [
+      "an unknown tier provider",
+      {
+        ...modelsJson,
+        tierRoutes: { ...modelsJson.tierRoutes, cheap: [{ provider: "unknown", model: "x" }] },
+      },
+    ],
+    [
+      "a tier route without a model",
+      {
+        ...modelsJson,
+        tierRoutes: { ...modelsJson.tierRoutes, cheap: [{ provider: "opencode" }] },
+      },
+    ],
+    [
+      "a non-Ollama local fallback",
+      { ...modelsJson, localFallback: { provider: "openrouter", model: "openrouter/free" } },
+    ],
+    [
+      "a negative price",
+      {
+        ...modelsJson,
+        pricing: modelsJson.pricing.map((price, index) =>
+          index === 0 ? { ...price, input: -1 } : price,
+        ),
+      },
+    ],
+    [
+      "a duplicate route",
+      {
+        ...modelsJson,
+        tierRoutes: {
+          ...modelsJson.tierRoutes,
+          cheap: [
+            { provider: "opencode", model: "mimo-v2.6-flash" },
+            { provider: "opencode", model: "mimo-v2.6-flash" },
+          ],
+        },
+      },
+    ],
+    [
+      "an unknown routed model",
+      {
+        ...modelsJson,
+        tierRoutes: {
+          ...modelsJson.tierRoutes,
+          cheap: [{ provider: "opencode", model: "mimo-v9.9-flash" }],
+        },
+      },
+    ],
+    [
+      "a routed model with no pricing policy",
+      {
+        ...modelsJson,
+        tierRoutes: {
+          ...modelsJson.tierRoutes,
+          cheap: [{ provider: "anthropic", model: "claude-opus-4" }],
+        },
+      },
+    ],
   ])("rejects %s", (_label, source) => {
     expect(modelCatalogueSchema.safeParse(source).success).toBe(false);
   });
@@ -70,22 +105,31 @@ describe("approved model catalogue", () => {
   it("excludes unavailable Crouton and training-required Iceman from historical routes", () => {
     const legacyOpenCode = new Set(
       Object.values(legacyJson.tierRoutes).flatMap((routes) =>
-        routes.flatMap((route) => (route.provider === "opencode" && route.model ? [route.model] : [])),
+        routes.flatMap((route) =>
+          route.provider === "opencode" && route.model ? [route.model] : [],
+        ),
       ),
     );
     expect([...approvedOpenCodeModelIds()].sort()).toEqual(
       [...legacyOpenCode, "qwen4-max", "kimi-k3.1-pro"]
-        .filter((id) => !["crouton-alpha-free", "iceman-contributor-free"].includes(id)).sort(),
+        .filter((id) => !["crouton-alpha-free", "iceman-contributor-free"].includes(id))
+        .sort(),
     );
   });
 });
 
 describe("catalogue route equivalence", () => {
   const stripMandatoryExclusions = (routes: Array<{ provider: string; model?: string }>) =>
-    routes.filter((route) => route.provider !== "opencode" || !["crouton-alpha-free", "iceman-contributor-free"].includes(route.model ?? ""));
+    routes.filter(
+      (route) =>
+        route.provider !== "opencode" ||
+        !["crouton-alpha-free", "iceman-contributor-free"].includes(route.model ?? ""),
+    );
 
   it("keeps the cheap order equal to the frozen legacy fixture minus mandatory exclusions", () => {
-    expect(modelRoutes("cheap", "auto")).toEqual(stripMandatoryExclusions(legacyJson.tierRoutes.cheap));
+    expect(modelRoutes("cheap", "auto")).toEqual(
+      stripMandatoryExclusions(legacyJson.tierRoutes.cheap),
+    );
   });
 
   it("changes standard only by promoting MiMo V2.6 Pro ahead of DeepSeek Flash", () => {
@@ -159,8 +203,24 @@ describe("catalogue pricing equivalence", () => {
   it("keeps Haiku long-context and Gemini scheduled prices", () => {
     expect(estimatedCost("anthropic", "claude-haiku-5-5", 100_000, 1000)).toBeCloseTo(0.0105);
     expect(estimatedCost("anthropic", "claude-haiku-5-5", 100_001, 1000)).toBeCloseTo(0.0525005);
-    expect(estimatedCost("gemini", "gemini-3.8-flash", 1_000_000, 1_000_000, new Date("2026-12-31T23:59:59.999Z"))).toBe(4.5);
-    expect(estimatedCost("gemini", "gemini-3.8-flash", 1_000_000, 1_000_000, new Date("2027-01-01T00:00:00.000Z"))).toBe(9);
+    expect(
+      estimatedCost(
+        "gemini",
+        "gemini-3.8-flash",
+        1_000_000,
+        1_000_000,
+        new Date("2026-12-31T23:59:59.999Z"),
+      ),
+    ).toBe(4.5);
+    expect(
+      estimatedCost(
+        "gemini",
+        "gemini-3.8-flash",
+        1_000_000,
+        1_000_000,
+        new Date("2027-01-01T00:00:00.000Z"),
+      ),
+    ).toBe(9);
   });
 
   it("keeps Ollama free and rejects unknown prices", () => {
@@ -174,9 +234,6 @@ describe("catalogue pricing equivalence", () => {
     vi.stubEnv("LLM_INPUT_USD_PER_MILLION", "1.25");
     vi.stubEnv("LLM_OUTPUT_USD_PER_MILLION", "3.5");
     expect(estimatedCost("openai", "gpt-4.1-mini", 1_000_000, 1_000_000)).toBe(4.75);
-    expect(modelRoutes("hard", "openai")).toEqual([
-      { provider: "openai" },
-      { provider: "ollama" },
-    ]);
+    expect(modelRoutes("hard", "openai")).toEqual([{ provider: "openai" }, { provider: "ollama" }]);
   });
 });

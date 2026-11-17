@@ -15,7 +15,10 @@ export async function loadCeoContext(): Promise<string> {
 
 export async function listProjects(): Promise<string[]> {
   const entries = await readdir(WORKSPACE, { withFileTypes: true });
-  return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
 }
 
 export async function loadProjectContext(project: string): Promise<string> {

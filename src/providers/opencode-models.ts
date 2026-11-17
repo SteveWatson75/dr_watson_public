@@ -36,7 +36,9 @@ export interface FetchGoCatalogueOptions {
   fetchFn?: typeof fetch;
 }
 
-export async function fetchGoCatalogue(options: FetchGoCatalogueOptions = {}): Promise<GoCatalogueRaw> {
+export async function fetchGoCatalogue(
+  options: FetchGoCatalogueOptions = {},
+): Promise<GoCatalogueRaw> {
   const { baseUrl = GO_MODELS_URL, fetchFn = globalThis.fetch } = options;
   const apiKey = options.apiKey ?? providerApiKey("opencode");
   if (!apiKey) {
@@ -49,7 +51,9 @@ export async function fetchGoCatalogue(options: FetchGoCatalogueOptions = {}): P
     },
   });
   if (!response.ok) {
-    throw new Error(`OpenCode Go catalogue request failed: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `OpenCode Go catalogue request failed: ${response.status} ${response.statusText}`,
+    );
   }
   const json = (await response.json()) as unknown;
   return validateCatalogue(json);

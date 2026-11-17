@@ -14,7 +14,18 @@ describe("formatStats", () => {
       outputTokens: 250,
       totalTokens: 1250,
       averageDurationMs: 321,
-      providerModels: [{ model: "gemini:gemini-3.7-flash", runs: 2, successfulRuns: 1, requests: 1, inputTokens: 100, outputTokens: 20, totalTokens: 140, averageDurationMs: 500 }],
+      providerModels: [
+        {
+          model: "gemini:gemini-3.7-flash",
+          runs: 2,
+          successfulRuns: 1,
+          requests: 1,
+          inputTokens: 100,
+          outputTokens: 20,
+          totalTokens: 140,
+          averageDurationMs: 500,
+        },
+      ],
       routes: [{ provider, route, count: 4 }],
       tiers: [{ provider, modelTier: "standard", count: 4 }],
     });

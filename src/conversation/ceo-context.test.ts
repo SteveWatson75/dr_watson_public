@@ -7,7 +7,7 @@ import { MemoryStore } from "./memory.js";
 import { createRoutedModel } from "../providers/provider.js";
 
 vi.mock("@openai/agents", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@openai/agents")>(),
+  ...(await importOriginal<typeof import("@openai/agents")>()),
   run: vi.fn(),
 }));
 vi.mock("../providers/provider.js", () => ({ createRoutedModel: vi.fn() }));
@@ -28,18 +28,27 @@ beforeEach(() => {
 afterEach(() => memory.close());
 
 async function ask(message: string, options = {}) {
-  return runConversation(memory, memory.createSession(), message,
-    "Canonical selected project: Acme is live.", "", { provider: "auto", ...options });
+  return runConversation(
+    memory,
+    memory.createSession(),
+    message,
+    "Canonical selected project: Acme is live.",
+    "",
+    { provider: "auto", ...options },
+  );
 }
 
 describe("CEO context injection", () => {
-  it.each(["Make a small code edit", "Implement this across the repo"])("does not load the pack for %s", async (message) => {
-    await ask(message);
-    expect(readFile).not.toHaveBeenCalled();
-    expect(run).toHaveBeenCalledOnce();
-    expect(vi.mocked(run).mock.calls[0]![1]).not.toContain("CEO CONTEXT");
-    expect(vi.mocked(run).mock.calls[0]![1]).not.toContain("Parked/future concept");
-  });
+  it.each(["Make a small code edit", "Implement this across the repo"])(
+    "does not load the pack for %s",
+    async (message) => {
+      await ask(message);
+      expect(readFile).not.toHaveBeenCalled();
+      expect(run).toHaveBeenCalledOnce();
+      expect(vi.mocked(run).mock.calls[0]![1]).not.toContain("CEO CONTEXT");
+      expect(vi.mocked(run).mock.calls[0]![1]).not.toContain("Parked/future concept");
+    },
+  );
 
   it.each([
     ["Review the architecture", {}],
@@ -60,25 +69,40 @@ describe("CEO context injection", () => {
   it("respects explicit cheap routing even for strategy wording", async () => {
     await ask("Choose our business strategy", { tier: "cheap" });
     expect(vi.mocked(run).mock.calls[0]![1]).not.toContain("CEO CONTEXT");
-    expect(createRoutedModel).toHaveBeenCalledWith("cheap", "auto", expect.any(Object), expect.any(Function));
+    expect(createRoutedModel).toHaveBeenCalledWith(
+      "cheap",
+      "auto",
+      expect.any(Object),
+      expect.any(Function),
+    );
   });
 
   it("keeps CEO calls on the existing route with provider/tier overrides", async () => {
     await ask("Recommend the next action", { ceo: true, tier: "cheap", provider: "ollama" });
-    expect(createRoutedModel).toHaveBeenCalledWith("cheap", "ollama", expect.any(Object), expect.any(Function));
+    expect(createRoutedModel).toHaveBeenCalledWith(
+      "cheap",
+      "ollama",
+      expect.any(Object),
+      expect.any(Function),
+    );
     expect(String(vi.mocked(run).mock.calls[0]![0].instructions)).toContain("CEO mode:");
   });
 
   it("does not persist the injected pack into later routine turns", async () => {
     const session = memory.createSession();
-    await runConversation(memory, session, "Review architecture", "project", "", { provider: "auto" });
-    await runConversation(memory, session, "Make a small edit", "project", "", { provider: "auto" });
+    await runConversation(memory, session, "Review architecture", "project", "", {
+      provider: "auto",
+    });
+    await runConversation(memory, session, "Make a small edit", "project", "", {
+      provider: "auto",
+    });
     expect(vi.mocked(run).mock.calls[1]![1]).not.toContain("CEO CONTEXT");
     expect(vi.mocked(run).mock.calls[1]![1]).not.toContain("Parked/future concept");
   });
 
   it("loads a concise pack when present and degrades when absent", async () => {
-    const pack = "CEO CONTEXT pack for Acme. Focus on one small action that resolves a commercial uncertainty.";
+    const pack =
+      "CEO CONTEXT pack for Acme. Focus on one small action that resolves a commercial uncertainty.";
     vi.mocked(readFile).mockResolvedValueOnce(pack);
     expect(await loadCeoContext()).toBe(pack);
     vi.mocked(readFile).mockRejectedValueOnce(new Error("ENOENT: no such file"));

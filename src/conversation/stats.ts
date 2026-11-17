@@ -5,9 +5,7 @@ function distribution(
   key: string,
 ): string[] {
   if (!rows.length) return ["  No data yet."];
-  return rows.map(
-    (row) => `  ${row.provider}: ${String(row[key])} = ${row.count}`,
-  );
+  return rows.map((row) => `  ${row.provider}: ${String(row[key])} = ${row.count}`);
 }
 
 export function formatStats(stats: Stats): string {

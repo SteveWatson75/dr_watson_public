@@ -16,14 +16,23 @@ export async function extractMemories(
   if (!shouldExtractMemory(enabled, userMessage, assistantResponse)) return;
 
   const result = await run(
-    new Agent({ name: memoryExtractor.name, instructions: memoryExtractor.instructions,
-      outputType: memoryExtractor.outputType, model: createRoutedModel("cheap", provider) }),
-    ["ACTIVE PROJECT: " + (project ?? "none"), "USER: " + userMessage, "ASSISTANT: " + assistantResponse].join("\n\n"),
+    new Agent({
+      name: memoryExtractor.name,
+      instructions: memoryExtractor.instructions,
+      outputType: memoryExtractor.outputType,
+      model: createRoutedModel("cheap", provider),
+    }),
+    [
+      "ACTIVE PROJECT: " + (project ?? "none"),
+      "USER: " + userMessage,
+      "ASSISTANT: " + assistantResponse,
+    ].join("\n\n"),
   );
 
   for (const candidate of result.finalOutput?.memories ?? []) {
     const scopeProject = candidate.scope === "project" ? project : undefined;
     if (candidate.scope === "project" && !scopeProject) continue;
-    if (!store.hasMemory(candidate.content, scopeProject)) store.addMemory(candidate.content, scopeProject);
+    if (!store.hasMemory(candidate.content, scopeProject))
+      store.addMemory(candidate.content, scopeProject);
   }
 }

@@ -32,7 +32,10 @@ function openStore(path: string): CatalogueStore {
 }
 
 const model = (id: string, created = 1) => ({
-  id, object: "model", created, owned_by: "opencode",
+  id,
+  object: "model",
+  created,
+  owned_by: "opencode",
 });
 const catalogue = (...models: ReturnType<typeof model>[]) => ({ object: "list", data: models });
 const firstCheck = "2026-10-17T09:00:00.000Z";
@@ -57,8 +60,14 @@ describe("OpenCode Go catalogue persistence", () => {
     // Repeated successful checks remain separate historical observations.
     store.saveSnapshot(next, "2026-10-19T09:00:00.000Z");
     expect(store.getPreviousModels()!.map((m) => m.id)).toEqual(["mimo-v2.6-flash"]);
-    expect(snapshots(db).map((row) => JSON.parse(row.raw_json as string))).toEqual([first, next, next]);
-    expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'model_catalogue'").all()).toEqual([]);
+    expect(snapshots(db).map((row) => JSON.parse(row.raw_json as string))).toEqual([
+      first,
+      next,
+      next,
+    ]);
+    expect(
+      db.prepare("SELECT name FROM sqlite_master WHERE name = 'model_catalogue'").all(),
+    ).toEqual([]);
   });
 
   it("opens a legacy database without changing its table, rows, indexes or historical snapshots", () => {
@@ -84,8 +93,9 @@ describe("OpenCode Go catalogue persistence", () => {
       CREATE TRIGGER reject_legacy_delete BEFORE DELETE ON model_catalogue
         BEGIN SELECT RAISE(ABORT, 'legacy delete'); END;
     `);
-    db.prepare("INSERT INTO model_catalogue_snapshots (checked_at, provider, raw_json) VALUES (?, ?, ?)")
-      .run(firstCheck, "opencode", JSON.stringify(catalogue(model("retired"))));
+    db.prepare(
+      "INSERT INTO model_catalogue_snapshots (checked_at, provider, raw_json) VALUES (?, ?, ?)",
+    ).run(firstCheck, "opencode", JSON.stringify(catalogue(model("retired"))));
     const rows = db.prepare("SELECT * FROM model_catalogue ORDER BY model_id").all();
     const schema = db.prepare("SELECT * FROM sqlite_master ORDER BY name").all();
     const history = snapshots(db);
@@ -111,7 +121,9 @@ describe("OpenCode Go catalogue persistence", () => {
         WHEN NEW.checked_at = '${nextCheck}'
         BEGIN SELECT RAISE(ABORT, 'snapshot write rejected'); END;
     `);
-    expect(() => store.saveSnapshot(catalogue(model("new")), nextCheck)).toThrow("snapshot write rejected");
+    expect(() => store.saveSnapshot(catalogue(model("new")), nextCheck)).toThrow(
+      "snapshot write rejected",
+    );
     expect(snapshots(db)).toEqual(history);
     expect(store.getPreviousModels()![0]!.id).toBe("beam-free");
     // Serialization failures also roll back and release the transaction.
@@ -131,16 +143,31 @@ describe("check-models offline command", () => {
 
   function runCheck(cwd: string, raw: unknown, status = 200, json = true) {
     const mockPath = join(cwd, "mock-fetch.mjs");
-    writeFileSync(mockPath, `globalThis.fetch = async () => new Response(${JSON.stringify(JSON.stringify(raw))}, { status: ${status} });`);
-    const result = spawnSync(process.execPath, [
-      "--import", mockPath, "--import", join(root, "node_modules/tsx/dist/loader.mjs"),
-      join(root, "src/check-models.ts"), ...(json ? ["--json"] : []),
-    ], {
-      cwd,
-      env: { ...process.env, OPENCODE_API_KEY: "offline-test-key", DOTENV_CONFIG_PATH: join(cwd, ".env") },
-      encoding: "utf8",
-      timeout: 15_000,
-    });
+    writeFileSync(
+      mockPath,
+      `globalThis.fetch = async () => new Response(${JSON.stringify(JSON.stringify(raw))}, { status: ${status} });`,
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        "--import",
+        mockPath,
+        "--import",
+        join(root, "node_modules/tsx/dist/loader.mjs"),
+        join(root, "src/check-models.ts"),
+        ...(json ? ["--json"] : []),
+      ],
+      {
+        cwd,
+        env: {
+          ...process.env,
+          OPENCODE_API_KEY: "offline-test-key",
+          DOTENV_CONFIG_PATH: join(cwd, ".env"),
+        },
+        encoding: "utf8",
+        timeout: 15_000,
+      },
+    );
     expect(result.error).toBeUndefined();
     return result;
   }
@@ -151,26 +178,38 @@ describe("check-models offline command", () => {
     const first = runCheck(dir, catalogue(model("beam-free"), model("retired")));
     expect(first.status, first.stderr).toBe(0);
     expect(JSON.parse(first.stdout)).toMatchObject({
-      added: ["beam-free", "retired"], removed: [], changed: [], candidates: ["retired"],
+      added: ["beam-free", "retired"],
+      removed: [],
+      changed: [],
+      candidates: ["retired"],
     });
     const next = catalogue(model("beam-free", 2), model("unapproved-new"));
     const result = runCheck(dir, next);
     expect(result.status, result.stderr).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
-      total: 2, added: ["unapproved-new"], removed: ["retired"],
+      total: 2,
+      added: ["unapproved-new"],
+      removed: ["retired"],
       changed: [{ model: "beam-free", field: "created", old: 1, new: 2 }],
       candidates: ["unapproved-new"],
     });
     const repeated = runCheck(dir, next);
     expect(repeated.status, repeated.stderr).toBe(0);
-    expect(JSON.parse(repeated.stdout)).toMatchObject({ added: [], removed: [], changed: [], candidates: [] });
+    expect(JSON.parse(repeated.stdout)).toMatchObject({
+      added: [],
+      removed: [],
+      changed: [],
+      candidates: [],
+    });
     const text = runCheck(dir, next, 200, false);
     expect(text.status, text.stderr).toBe(0);
     expect(text.stdout).toContain("No changes since the last check.");
     expect(readFileSync(approvedPath, "utf8")).toBe(approved);
     const db = openDatabase(join(dir, "data/catalogue.db"));
     expect(snapshots(db)).toHaveLength(4);
-    expect(db.prepare("SELECT name FROM sqlite_master WHERE name = 'model_catalogue'").all()).toEqual([]);
+    expect(
+      db.prepare("SELECT name FROM sqlite_master WHERE name = 'model_catalogue'").all(),
+    ).toEqual([]);
   });
 
   it("leaves the last valid snapshot intact after malformed responses and failed fetches", () => {
@@ -178,7 +217,12 @@ describe("check-models offline command", () => {
     expect(runCheck(dir, catalogue(model("beam-free"))).status).toBe(0);
     const db = openDatabase(join(dir, "data/catalogue.db"));
     const history = snapshots(db);
-    for (const raw of [null, { object: "wrong", data: [] }, { object: "list", data: {} }, { object: "list", data: [null] }]) {
+    for (const raw of [
+      null,
+      { object: "wrong", data: [] },
+      { object: "list", data: {} },
+      { object: "list", data: [null] },
+    ]) {
       const result = runCheck(dir, raw);
       expect(result.status).toBe(1);
       expect(snapshots(db)).toEqual(history);

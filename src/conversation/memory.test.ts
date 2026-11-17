@@ -42,14 +42,16 @@ describe("MemoryStore", () => {
     store = new MemoryStore(":memory:");
     const sessionId = store.createSession();
 
-    expect(() => store?.addRoutingDecision({
-      sessionId,
-      provider: "opencode",
-      model: "mimo-v2.6-flash",
-      route: "planned",
-      modelTier: "cheap",
-      durationMs: 0,
-    })).not.toThrow();
+    expect(() =>
+      store?.addRoutingDecision({
+        sessionId,
+        provider: "opencode",
+        model: "mimo-v2.6-flash",
+        route: "planned",
+        modelTier: "cheap",
+        durationMs: 0,
+      }),
+    ).not.toThrow();
   });
 
   it("aggregates agent and routing stats", () => {
@@ -90,26 +92,26 @@ describe("MemoryStore", () => {
         averageDurationMs: 100,
       },
     ]);
-    expect(stats.routes).toEqual([
-      { provider: "opencode", route: "planned", count: 1 },
-    ]);
+    expect(stats.routes).toEqual([{ provider: "opencode", route: "planned", count: 1 }]);
   });
 
   it("records agent run usage", () => {
     store = new MemoryStore(":memory:");
     const sessionId = store.createSession();
 
-    expect(() => store?.addAgentRun({
-      sessionId,
-      agent: "Dr Watson",
-      model: "test-model",
-      durationMs: 125,
-      success: true,
-      requests: 2,
-      inputTokens: 100,
-      outputTokens: 25,
-      totalTokens: 125,
-    })).not.toThrow();
+    expect(() =>
+      store?.addAgentRun({
+        sessionId,
+        agent: "Dr Watson",
+        model: "test-model",
+        durationMs: 125,
+        success: true,
+        requests: 2,
+        inputTokens: 100,
+        outputTokens: 25,
+        totalTokens: 125,
+      }),
+    ).not.toThrow();
   });
 
   it("limits context to recent messages", () => {
@@ -142,9 +144,34 @@ describe("MemoryStore", () => {
       totalTokens: 95,
     });
     expect(runId).toBeGreaterThan(0);
-    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-pro", outcome: "used", durationMs: 100, inputTokens: 10, outputTokens: 2 });
-    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-pro", outcome: "failed", durationMs: 5 });
-    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-flash", outcome: "used", durationMs: 200, inputTokens: 70, outputTokens: 13 });
+    store.addModelUsage({
+      agentRunId: runId,
+      sessionId,
+      provider: "opencode",
+      model: "mimo-v2.6-pro",
+      outcome: "used",
+      durationMs: 100,
+      inputTokens: 10,
+      outputTokens: 2,
+    });
+    store.addModelUsage({
+      agentRunId: runId,
+      sessionId,
+      provider: "opencode",
+      model: "mimo-v2.6-pro",
+      outcome: "failed",
+      durationMs: 5,
+    });
+    store.addModelUsage({
+      agentRunId: runId,
+      sessionId,
+      provider: "opencode",
+      model: "mimo-v2.6-flash",
+      outcome: "used",
+      durationMs: 200,
+      inputTokens: 70,
+      outputTokens: 13,
+    });
 
     const stats = store.getStats();
     expect(stats.providerModels).toEqual([
@@ -198,7 +225,16 @@ describe("MemoryStore", () => {
       outputTokens: 15,
       totalTokens: 65,
     });
-    store.addModelUsage({ agentRunId: runId, sessionId, provider: "opencode", model: "mimo-v2.6-flash", outcome: "used", durationMs: 50, inputTokens: 40, outputTokens: 10 });
+    store.addModelUsage({
+      agentRunId: runId,
+      sessionId,
+      provider: "opencode",
+      model: "mimo-v2.6-flash",
+      outcome: "used",
+      durationMs: 50,
+      inputTokens: 40,
+      outputTokens: 10,
+    });
 
     expect(store.getStats().providerModels).toEqual([
       {
@@ -257,7 +293,11 @@ describe("MemoryStore", () => {
         INSERT INTO agent_runs (session_id, agent, model, duration_ms, success, requests, input_tokens, output_tokens, total_tokens)
           VALUES (1, 'Dr Watson', 'opencode:mimo-v2.6-pro', 250, 1, 1, 90, 10, 100);
       `);
-      const schema = legacy.prepare("SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'routing_decisions' ORDER BY name").all();
+      const schema = legacy
+        .prepare(
+          "SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'routing_decisions' ORDER BY name",
+        )
+        .all();
       const historicalRows = legacy.prepare("SELECT * FROM routing_decisions ORDER BY id").all();
       legacy.close();
 
@@ -281,8 +321,12 @@ describe("MemoryStore", () => {
         { provider: "opencode", route: "active", count: 1 },
       ]);
       store.addRoutingDecision({
-        sessionId: store.createSession(), provider: "opencode", model: "mimo-v2.6-flash",
-        route: "planned", modelTier: "cheap", durationMs: 0,
+        sessionId: store.createSession(),
+        provider: "opencode",
+        model: "mimo-v2.6-flash",
+        route: "planned",
+        modelTier: "cheap",
+        durationMs: 0,
       });
       expect(store.getStats().routes).toEqual([
         { provider: "baseline", route: "coding", count: 1 },
@@ -291,9 +335,19 @@ describe("MemoryStore", () => {
       ]);
       const reopened = new DatabaseSync(path);
       try {
-        expect(reopened.prepare("SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'routing_decisions' ORDER BY name").all()).toEqual(schema);
-        expect(reopened.prepare("SELECT * FROM routing_decisions WHERE id <= 2 ORDER BY id").all()).toEqual(historicalRows);
-        expect(reopened.prepare("SELECT route FROM routing_decisions WHERE id > 2").all()).toEqual([{ route: "planned" }]);
+        expect(
+          reopened
+            .prepare(
+              "SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'routing_decisions' ORDER BY name",
+            )
+            .all(),
+        ).toEqual(schema);
+        expect(
+          reopened.prepare("SELECT * FROM routing_decisions WHERE id <= 2 ORDER BY id").all(),
+        ).toEqual(historicalRows);
+        expect(reopened.prepare("SELECT route FROM routing_decisions WHERE id > 2").all()).toEqual([
+          { route: "planned" },
+        ]);
       } finally {
         reopened.close();
       }
