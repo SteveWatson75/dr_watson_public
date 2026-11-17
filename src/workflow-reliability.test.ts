@@ -8,7 +8,10 @@ describe("GitHub agents", () => {
   it("keeps review advisory, on trusted base code and without repository write credentials", async () => {
     const workflow = await readFile(".github/workflows/agent-review.yml", "utf8");
     expect(workflow).toContain("pull_request_target:");
-    expect(workflow).toContain("ref: ${{ github.event.pull_request.base.sha }}");
+    expect(workflow).toContain("ref: main");
+    expect(workflow).not.toContain("github.event.pull_request.base.sha");
+    expect(workflow).toContain('BASE_SHA="$(git rev-parse HEAD)"');
+    expect(workflow).toContain('echo "BASE_SHA=$BASE_SHA" >> "$GITHUB_ENV"');
     expect(workflow).toContain("persist-credentials: false");
     expect(workflow).toContain("contents: read\n  pull-requests: write");
     expect(workflow).not.toContain("OPENCODE_GH_TOKEN");
