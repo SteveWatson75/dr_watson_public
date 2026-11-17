@@ -66,6 +66,9 @@ jobs:
           retention-days: 7
 
   publish:
+    # Deliberately retire the old "publish" check name: it must not silently
+    # become a passing security gate when publication succeeds but review does not.
+    name: review-execution
     needs: analyze
     if: always() && needs.analyze.result != 'skipped' && !cancelled()
     runs-on: ubuntu-latest
@@ -73,6 +76,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      approved: ${{ steps.verdict.outputs.approved }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -88,8 +93,29 @@ jobs:
           name: bounded-review-result
           path: ${{ runner.temp }}/dr-watson-review
       - name: Validate, recheck SHA, publish advisory verdict
+        id: verdict
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REVIEW_SHA: ${{ github.event.pull_request.head.sha }}
         run: node_modules/.bin/tsx src/github/github-review-cli.ts publish "$PR_NUMBER" "$REVIEW_SHA"
+
+  review-policy:
+    # Never skip this gate for a skipped/missing/failed review: GitHub treats
+    # skipped and neutral required checks as passing.
+    if: always()
+    needs: [analyze, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - name: Require complete review without blocking findings or human-inspection requirements
+        env:
+          ANALYSIS: ${{ needs.analyze.result }}
+          PUBLICATION: ${{ needs.publish.result }}
+          APPROVED: ${{ needs.publish.outputs.approved }}
+        run: |
+          if [ "$ANALYSIS" != success ] || [ "$PUBLICATION" != success ] || [ "$APPROVED" != true ]; then
+            echo "::error::Review policy not satisfied: incomplete coverage, human inspection, blocking findings, or failed/missing execution. See review-execution summary. This is not merge approval."
+            exit 1
+          fi

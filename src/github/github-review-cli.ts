@@ -12,7 +12,7 @@ import {
   manifestSchema,
   resultSchema,
   incomplete,
-  validateReview,
+  parseReview,
   renderReview,
   sanitize,
   CONTEXT_BYTES,
@@ -63,6 +63,7 @@ const artifactSchema = z
       .object({
         modelSuccess: z.boolean(),
         cliSuccess: z.boolean(),
+        verdictValid: z.boolean(),
         route: z.string().max(100).optional(),
         requestCount: z.number().int().min(0).max(2),
         fallbackAttempts: z.number().int().min(0).max(1),
@@ -363,6 +364,7 @@ export async function analyze(directory: string, reviewer = invokeReview): Promi
     diagnostics: {
       modelSuccess: reviewed?.modelSuccess ?? false,
       cliSuccess,
+      verdictValid: !timedOut && (reviewed?.verdictValid ?? false),
       ...(reviewed?.route ? { route: reviewed.route } : {}),
       requestCount: attempts.length,
       fallbackAttempts: Math.max(0, attempts.length - 1),
@@ -378,6 +380,10 @@ export async function analyze(directory: string, reviewer = invokeReview): Promi
     blockingReason: redact(f.blockingReason),
   }));
   await writeFile(join(directory, "result.json"), JSON.stringify(artifact), { mode: 0o600 });
+  if (!cliSuccess || timedOut || !reviewed?.modelSuccess || !reviewed.verdictValid) {
+    console.error("Review analysis failed; result artifact contains safe execution diagnostics.");
+    process.exitCode = 1;
+  }
 }
 
 export async function publish(pr: number, sha: string, directory: string): Promise<void> {
@@ -398,30 +404,41 @@ export async function publish(pr: number, sha: string, directory: string): Promi
     contextBytes: 0,
   };
   if (manifest.pr !== pr || manifest.sha !== sha) throw new Error("Artifact identity mismatch");
-  let result = artifact
-    ? validateReview(JSON.stringify(artifact.result), manifest)
-    : incomplete(
-        manifest,
-        "Preparation, installation, or execution failed; no valid result artifact.",
-      );
+  let result = incomplete(
+    manifest,
+    "Preparation, installation, or execution failed; no valid result artifact.",
+  );
+  let executionError: string | undefined = artifact ? undefined : "invalid_or_missing_artifact";
+  if (artifact) {
+    try {
+      result = parseReview(JSON.stringify(artifact.result), manifest);
+    } catch {
+      executionError = "invalid_verdict";
+      result = incomplete(manifest, "Invalid artifact verdict, SHA, or finding references.");
+    }
+  }
   if (
     artifact &&
     (artifact.diagnostics.requestCount !== artifact.diagnostics.attempts.length ||
       artifact.diagnostics.fallbackAttempts !==
         Math.max(0, artifact.diagnostics.attempts.length - 1) ||
-      (result.outcome !== "Incomplete" &&
-        (!artifact.diagnostics.cliSuccess ||
-          !artifact.diagnostics.modelSuccess ||
-          artifact.diagnostics.attempts.at(-1)?.category !== "success")))
+      !artifact.diagnostics.verdictValid ||
+      !artifact.diagnostics.cliSuccess ||
+      !artifact.diagnostics.modelSuccess ||
+      artifact.diagnostics.attempts.at(-1)?.category !== "success")
   ) {
-    result = incomplete(
-      manifest,
-      "Invocation did not complete successfully or diagnostics are inconsistent.",
-    );
+    executionError = "failed_invocation_or_diagnostics";
+    // Keep a useful provider/client failure reason; never replace it with a generic verdict.
+    if (result.outcome !== "Incomplete")
+      result = incomplete(
+        manifest,
+        "Invocation did not complete successfully or diagnostics are inconsistent.",
+      );
   }
   const current = prSchema.parse(await github(`pulls/${pr}`));
   if (current.number !== pr) throw new Error("PR identity mismatch");
   if (current.head.sha !== sha || (artifact && current.base.sha !== manifest.base)) {
+    executionError = "stale_snapshot";
     result = incomplete(
       manifest,
       "PR head or base changed after inspection; stale review, rerun required.",
@@ -432,12 +449,7 @@ export async function publish(pr: number, sha: string, directory: string): Promi
   let report = renderReview(manifest, result, secrets);
   let comment = report;
   if (Buffer.byteLength(comment) > 60_000) {
-    result = incomplete(
-      manifest,
-      "Publication exceeds comment size budget; full coverage inventory is in the job summary and result artifact.",
-    );
-    manifest.fullScope = false;
-    report = renderReview(manifest, result, secrets);
+    // Presentation limits must not erase actionable blocking findings or change coverage.
     comment = renderReview(manifest, result, secrets, 20);
   }
   // No APPROVE/REQUEST_CHANGES, inline commands, arbitrary endpoints or model tools.
@@ -451,6 +463,7 @@ export async function publish(pr: number, sha: string, directory: string): Promi
     });
     publicationSuccess = true;
   } catch (error) {
+    executionError = "publication_failed";
     const match = error instanceof Error ? /^GitHub HTTP (\d+)$/.exec(error.message) : null;
     publicationStatus = match ? Number(match[1]) : undefined;
     result = incomplete(
@@ -459,6 +472,12 @@ export async function publish(pr: number, sha: string, directory: string): Promi
     );
     report = renderReview(manifest, result, secrets);
   }
+  const approved =
+    !executionError &&
+    publicationSuccess &&
+    result.outcome === "Approved" &&
+    manifest.fullScope &&
+    !manifest.humanRequired;
   const diagnostics = JSON.stringify({
     pr,
     sha,
@@ -468,14 +487,18 @@ export async function publish(pr: number, sha: string, directory: string): Promi
     contextBytes: manifest.contextBytes,
     inputTokenUpperBound: inputTokenUpperBound(manifest.contextBytes),
     fullScope: manifest.fullScope,
+    humanRequired: manifest.humanRequired,
+    executionSuccess: !executionError && publicationSuccess,
+    ...(executionError ? { executionError } : {}),
     outcome: result.outcome,
     reviewComplete: result.outcome !== "Incomplete",
-    reviewApproved: result.outcome === "Approved",
+    reviewApproved: approved,
     publicationSuccess,
     ...(publicationStatus ? { publicationStatus } : {}),
     ...(artifact?.diagnostics ?? {
       modelSuccess: false,
       cliSuccess: false,
+      verdictValid: false,
       requestCount: null,
       fallbackAttempts: null,
       attempts: [],
@@ -488,7 +511,13 @@ export async function publish(pr: number, sha: string, directory: string): Promi
       `${report}\n\nDiagnostics:\n\`\`\`json\n${diagnostics}\n\`\`\`\n`,
     );
   }
-  if (result.outcome === "Incomplete") process.exitCode = 1;
+  // Only fixed booleans enter Actions outputs, never model text or commands.
+  if (process.env.GITHUB_OUTPUT)
+    await appendFile(process.env.GITHUB_OUTPUT, `approved=${approved}\n`);
+  if (executionError || !publicationSuccess) {
+    console.error("Review execution failed; see the SHA-bound report and safe diagnostics.");
+    process.exitCode = 1;
+  }
 }
 
 export async function main(): Promise<void> {
@@ -502,11 +531,21 @@ export async function main(): Promise<void> {
   else if (command === "publish") await publish(pr, sha, directory);
   else throw new Error("Unknown operation");
 }
+
+export function operationDiagnostic(error: unknown, command: string | undefined): string {
+  const phase = ["collect", "analyze", "publish"].includes(command ?? "") ? command : "unknown";
+  const detail =
+    error instanceof Error &&
+    /^(?:Artifact identity mismatch|PR identity mismatch|Stale PR snapshot|PR moved during preparation|Incomplete or duplicate file inventory|GitHub HTTP \d{3})$/.test(
+      error.message,
+    )
+      ? error.message
+      : "invalid input/artifact, installation or execution failure";
+  return `Review ${phase} failed: ${detail}. Sensitive details suppressed; no policy approval.`;
+}
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch(() => {
-    console.error(
-      "Review operation failed; sensitive details suppressed. Check phase and diagnostics.",
-    );
+  main().catch((error) => {
+    console.error(operationDiagnostic(error, process.argv[2]));
     process.exitCode = 1;
   });
 }

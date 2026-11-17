@@ -76,6 +76,12 @@ Implemented controls:
   oversized responses and wrong SHAs. Publishing is always a `COMMENT` review with the exact
   inspected `commit_id`, never `APPROVE`, merge, push or remediation. Head/base are rechecked.
   Policy/workflow/configuration changes require human review and cannot receive automatic approval.
+- Native Actions `review-policy` fails for blocking, incomplete or human-required review,
+  missing/skipped dependencies, or failed execution. `review-execution` success means only
+  successful validated execution/publication, not security approval. No Checks/status write
+  permission or neutral conclusion is used; neutral/skipped required checks can satisfy GitHub
+  branch protection. The owner must require `review-policy`, standard CI and independent human
+  review in repository settings; see the [deployment instructions](docs/agents/github-review.md#required-check-deployment-and-neutral-conclusions).
 - Only sanitized result/manifest/allowlisted diagnostics are retained, not prompts, provider
   bodies, environment dumps or OpenCode logs. Model text is escaped in a plain-text report.
 
