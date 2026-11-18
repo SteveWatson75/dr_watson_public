@@ -48,6 +48,78 @@ function goHeaders(provider: LlmProvider) {
     : undefined;
 }
 
+// Anthropic's OpenAI compatibility accepts response_format only as json_schema
+// with strict: true, and its structured-output schema subset rejects constraint
+// keywords (string length, numeric bounds, array bounds beyond minItems 0/1)
+// and unsupported string formats with a terminal HTTP 400. Strip those keywords
+// from the wire schema (Anthropic's own SDKs do the same) and force strict.
+// Downstream validation is unaffected: the parsed result is still checked
+// against the original zod schema by the agent's output type.
+const ANTHROPIC_SCHEMA_FORMATS = new Set([
+  "date-time",
+  "time",
+  "date",
+  "duration",
+  "email",
+  "hostname",
+  "uri",
+  "ipv4",
+  "ipv6",
+  "uuid",
+]);
+const ANTHROPIC_SCHEMA_DROP_KEYS = new Set([
+  "minLength",
+  "maxLength",
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "maxItems",
+]);
+
+function anthropicSafeSchema<T>(value: T): T {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, child]) => {
+        if (ANTHROPIC_SCHEMA_DROP_KEYS.has(key)) return [];
+        if (key === "minItems" && typeof child === "number" && child > 1) return [];
+        if (key === "format" && typeof child === "string" && !ANTHROPIC_SCHEMA_FORMATS.has(child))
+          return [];
+        // These are maps of names to schemas, not schemas themselves. Never
+        // remove a user's property named "minimum", "format", etc.
+        if (
+          ["properties", "$defs", "definitions", "patternProperties", "dependentSchemas"].includes(
+            key,
+          ) &&
+          child &&
+          typeof child === "object"
+        ) {
+          return [
+            [
+              key,
+              Object.fromEntries(
+                Object.entries(child).map(([name, schema]) => [name, anthropicSafeSchema(schema)]),
+              ),
+            ],
+          ];
+        }
+        if (["items", "additionalProperties", "not", "if", "then", "else"].includes(key))
+          return [[key, anthropicSafeSchema(child)]];
+        if (["anyOf", "allOf", "oneOf", "prefixItems"].includes(key) && Array.isArray(child))
+          return [[key, child.map((schema) => anthropicSafeSchema(schema))]];
+        return [[key, child]];
+      }),
+    ) as unknown as T;
+  }
+  return value;
+}
+
+function anthropicOutputType(outputType: ModelRequest["outputType"]): ModelRequest["outputType"] {
+  if (outputType === "text" || outputType.type !== "json_schema") return outputType;
+  return { ...outputType, strict: true, schema: anthropicSafeSchema(outputType.schema) };
+}
+
 async function rawModel(route: ModelRoute): Promise<Model> {
   const settings = providerSettings(route.provider, route.model);
   const client = new OpenAI({
@@ -57,10 +129,22 @@ async function rawModel(route: ModelRoute): Promise<Model> {
     timeout: 60_000,
     defaultHeaders: goHeaders(route.provider),
   });
-  return new OpenAIProvider({
+  const model = await new OpenAIProvider({
     openAIClient: client,
     useResponses: route.provider === "openai",
   }).getModel(settings.model);
+  if (route.provider !== "anthropic" && route.provider !== "gemini") return model;
+  return {
+    async getResponse(request) {
+      const response = await model.getResponse(request);
+      // The SDK accepts choices: [] as a successful, empty output. Do not
+      // return that as a usable answer (or settle an untrustworthy response).
+      if (response.output.length === 0)
+        throw new Error(`${route.provider} returned no assistant output.`);
+      return response;
+    },
+    getStreamedResponse: model.getStreamedResponse.bind(model),
+  };
 }
 
 // Every agent (including nested specialist and extraction calls) uses this wrapper.
@@ -118,6 +202,10 @@ export function guardedModel(
             route.provider === "anthropic" && request.outputType !== "text"
               ? `${request.systemInstructions ?? ""}\nReturn only JSON matching this schema: ${JSON.stringify(request.outputType.schema)}`
               : request.systemInstructions,
+          outputType:
+            route.provider === "anthropic"
+              ? anthropicOutputType(request.outputType)
+              : request.outputType,
           modelSettings: {
             ...request.modelSettings,
             maxTokens,
