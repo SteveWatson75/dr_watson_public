@@ -131,10 +131,15 @@ export function formatBudget(status: BudgetStatus): string {
   return [
     `Estimated spend (${status.month}, USD): $${status.spent.toFixed(4)}; remaining $${status.remaining.toFixed(4)}`,
     `Soft warning $${status.softLimit.toFixed(2)}; hard limit $${status.hardLimit.toFixed(2)}`,
-    ...status.models.map(
-      (m) =>
-        `  ${m.provider}:${m.model}: $${m.usd.toFixed(4)} (${m.inputTokens} in / ${m.outputTokens} out)`,
-    ),
+    ...(status.models.length
+      ? [
+          "This Month's Model Usage:",
+          ...status.models.map(
+            (m) =>
+              `  ${m.provider}:${m.model}: $${m.usd.toFixed(4)} (${m.inputTokens} in / ${m.outputTokens} out)`,
+          ),
+        ]
+      : []),
     ...(status.spent >= status.hardLimit
       ? ["Hard budget limit reached: paid calls blocked; free and local routes remain available."]
       : status.spent >= status.softLimit
