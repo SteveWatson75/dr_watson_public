@@ -80,6 +80,7 @@ describe("monthly budget", () => {
     const id = db.reserve("anthropic", "claude-sonnet-5-5", 16)!;
     db.settle(id, 16, 3_000_000, 1_000_000);
     expect(formatBudget(db.status())).toContain("Warning: monthly soft budget");
+    expect(formatBudget(db.status())).toContain("This Month's Model Usage:");
     const other = new BudgetLedger(path, 15, 20, () => date);
     resources.push(() => other.close());
     expect(other.status().spent).toBe(16);
