@@ -79,6 +79,27 @@ describe("isProviderFailoverError", () => {
       isProviderFailoverError(Object.assign(new Error("Invalid tool arguments"), { status: 400 })),
     ).toBe(false);
   });
+  it("fails over for Gemini's documented invalid-credentials 400 but not other Gemini 400s", () => {
+    // Gemini reports a bad API key as 400 INVALID_ARGUMENT instead of 401.
+    expect(
+      isProviderFailoverError(
+        Object.assign(new Error("400 API key not valid. Please pass a valid API key."), {
+          status: 400,
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isProviderFailoverError(
+        Object.assign(
+          new Error('400 Invalid JSON payload received. Unknown name "store": Cannot find field.'),
+          { status: 400 },
+        ),
+      ),
+    ).toBe(false);
+  });
+  it("does not classify JSON parsing errors as transient provider failures", () => {
+    expect(isProviderFailoverError(new SyntaxError("Unexpected end of JSON input"))).toBe(false);
+  });
   it("retains network failover but stops application errors", () => {
     expect(isProviderFailoverError(new Error("fetch failed"))).toBe(true);
     expect(isProviderFailoverError(new Error("invalid tool arguments"))).toBe(false);

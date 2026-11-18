@@ -24,7 +24,15 @@ export function isProviderFailoverError(error: unknown): boolean {
     // unavailable", "model is not available") while still requiring the
     // upstream-request prefix and the model/unavailable keywords.
     if (status === 400)
-      return /upstream request failed:.*\bmodel\b.*(?:\bunavailable\b|not available)/i.test(text);
+      return (
+        /upstream request failed:.*\bmodel\b.*(?:\bunavailable\b|not available)/i.test(text) ||
+        // Gemini reports invalid credentials as HTTP 400 INVALID_ARGUMENT
+        // ("API key not valid") instead of 401. Treat that documented auth
+        // failure like the other credential statuses so a bad key falls
+        // through to the next route; other 400s stay terminal.
+        (error instanceof Error &&
+          /^(?:400 )?API key not valid\. Please pass a valid API key\.?$/i.test(error.message))
+      );
     // OpenCode Go can return HTTP 422 for a temporarily unavailable upstream
     // endpoint. This specific response should try the next configured route;
     // other 422s still indicate a request/configuration problem.

@@ -30,6 +30,7 @@ OpenCode owns its tools and permissions; Dr Watson routes its model requests.
 
 For contributors and coding agents: [AGENTS.md](AGENTS.md).
 Detailed documentation: [security and limitations](SECURITY.md),
+[Gemini/Anthropic compatibility and optional smoke checks](docs/provider-compatibility.md),
 [model evaluations](docs/model-evaluations.md),
 [Round 2 evidence](docs/model-evaluations-round2-results.md),
 [OpenCode integration results](docs/opencode-integration.md), and the
