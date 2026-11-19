@@ -1,7 +1,7 @@
 import { assertConfig, setupMessages } from "./config.js";
 import { budgetLedger, formatBudget } from "./budget.js";
 import { configureModelProvider } from "./providers/provider.js";
-import { createLocalApi } from "./local-api.js";
+import { createLocalApi } from "./local-api/server.js";
 
 assertConfig();
 configureModelProvider();

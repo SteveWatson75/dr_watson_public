@@ -10,8 +10,8 @@ not another model deciding which model to call.
 
 ## How it fits together
 
-- **Entry points:** `src/index.ts` runs the CLI; `src/serve.ts` starts the loopback API.
-- **Local API:** `src/local-api.ts` owns the HTTP boundary; `src/local-api/` separates
+- **Entry points:** `src/cli/main.ts` runs the CLI; `src/serve.ts` starts the loopback API.
+- **Local API:** `src/local-api/server.ts` owns the HTTP boundary; `src/local-api/` separates
   protocol validation/SSE, message preparation and session-aware completion routing.
 - **Conversation:** `src/conversation/` assembles CLI context and stores messages,
   durable memories and usage statistics in SQLite.
@@ -22,6 +22,9 @@ not another model deciding which model to call.
   `src/budget.ts` reserves and records estimated paid usage.
 - **Evaluation:** `src/evaluation/` contains the bounded model-evaluation CLI.
   GitHub implementation and advisory review use OpenCode directly from workflows.
+- **Commands:** `src/commands/` contains model discovery and the explicitly invoked
+  provider smoke checks. Unit tests stay beside their implementation; repository
+  configuration and workflow tests live in `tests/integration/`.
 
 The built-in specialists provide advice and plans, not autonomous implementation.
 They have no filesystem, shell or deployment tools. Proposed work must not be

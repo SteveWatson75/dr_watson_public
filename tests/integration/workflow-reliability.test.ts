@@ -80,7 +80,9 @@ describe("standard CI formatting gate", () => {
       for (const name of ["package.json", "tsconfig.json", ".prettierrc.json"])
         await writeFile(join(directory, name), await readFile(name));
       await mkdir(join(directory, "src"));
+      await mkdir(join(directory, "tests/integration"), { recursive: true });
       const source = join(directory, "src/example.ts");
+      const test = join(directory, "tests/integration/example.test.ts");
       const check = () =>
         spawnSync("npm", ["run", "format:check"], {
           cwd: directory,
@@ -91,6 +93,7 @@ describe("standard CI formatting gate", () => {
           encoding: "utf8",
         });
       await writeFile(source, "export const example = 1;\n");
+      await writeFile(test, "export const example = 1;\n");
       expect(check().status).toBe(0);
       const misformatted = "export   const example=1\n";
       await writeFile(source, misformatted);
@@ -98,6 +101,12 @@ describe("standard CI formatting gate", () => {
       expect(failed.status).toBe(1);
       expect(failed.stderr).toContain("src/example.ts");
       expect(await readFile(source, "utf8")).toBe(misformatted);
+      await writeFile(source, "export const example = 1;\n");
+      await writeFile(test, misformatted);
+      const failedTest = check();
+      expect(failedTest.status).toBe(1);
+      expect(failedTest.stderr).toContain("tests/integration/example.test.ts");
+      expect(await readFile(test, "utf8")).toBe(misformatted);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

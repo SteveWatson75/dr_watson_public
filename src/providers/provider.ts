@@ -12,11 +12,7 @@ import { config, providerSettings, type LlmProvider, type TaskTier } from "../co
 import { budgetLedger, estimatedCost, type BudgetLedger } from "../budget.js";
 import { isProviderFailoverError } from "./failover.js";
 import { modelRoutes, type ModelRoute } from "../routing/provider-chain.js";
-import {
-  estimatedInputTokens,
-  trimHistory,
-  type ExpendableHistory,
-} from "../conversation/haiku-context.js";
+import { estimatedInputTokens, trimHistory, type ExpendableHistory } from "./request-context.js";
 import { productionPrivacyEligibility } from "./model-policy.js";
 
 export type ProviderModel = Model;
