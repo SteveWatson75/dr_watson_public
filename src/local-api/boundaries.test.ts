@@ -1,14 +1,14 @@
 import { request as httpRequest, type Server } from "node:http";
 import type OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BudgetLedger } from "./budget.js";
+import { BudgetLedger } from "../budget.js";
 import {
   createLocalApi,
   LOCAL_MODEL,
   prepareOpenCodeMessages,
   redactProviderError,
   type CompletionTransport,
-} from "./local-api.js";
+} from "./server.js";
 
 let server: Server;
 let base: string;

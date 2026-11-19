@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Usage, type ModelRequest } from "@openai/agents";
 import { BudgetLedger } from "../budget.js";
 import { config } from "../config.js";
-import { guardedModel } from "../providers/provider.js";
+import { guardedModel } from "./provider.js";
 import { modelRoutes } from "../routing/provider-chain.js";
-import { estimatedInputTokens } from "./haiku-context.js";
+import { estimatedInputTokens } from "./request-context.js";
 import { providerApiKey } from "../config.js";
 
 function firstAvailableRoute(tier: "cheap" | "standard"): { provider: string; model?: string } {

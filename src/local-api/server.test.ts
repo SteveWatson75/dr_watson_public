@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { request as httpRequest, type Server } from "node:http";
 import type OpenAI from "openai";
-import { BudgetLedger } from "./budget.js";
-import { config } from "./config.js";
+import { BudgetLedger } from "../budget.js";
+import { config } from "../config.js";
 import {
   conversationTier,
   createLocalApi,
@@ -13,7 +13,7 @@ import {
   routedCompletion,
   LOCAL_MODEL,
   type CompletionTransport,
-} from "./local-api.js";
+} from "./server.js";
 
 let ledger: BudgetLedger;
 let server: Server;

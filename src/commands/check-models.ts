@@ -3,9 +3,9 @@ import {
   normalizeGoModels,
   diffCatalogues,
   type GoModel,
-} from "./providers/opencode-models.js";
-import { CatalogueStore } from "./providers/opencode-catalogue.js";
-import { approvedOpenCodeModelIds } from "./providers/model-catalogue.js";
+} from "../providers/opencode-models.js";
+import { CatalogueStore } from "../providers/opencode-catalogue.js";
+import { approvedOpenCodeModelIds } from "../providers/model-catalogue.js";
 
 // Discovery reports candidates for human review; it never changes routing.
 async function run(): Promise<number> {

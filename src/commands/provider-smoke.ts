@@ -8,7 +8,7 @@ import {
 import { z } from "zod";
 import { budgetLedger } from "../budget.js";
 import { providerApiKey } from "../config.js";
-import { guardedModel } from "./provider.js";
+import { guardedModel } from "../providers/provider.js";
 
 // Explicit, owner-authorized invocation only; never imported by CI tests.
 const provider = process.argv[3];
@@ -17,7 +17,7 @@ if (
   !["anthropic", "gemini"].includes(provider ?? "") ||
   process.env.CI
 ) {
-  console.error("Local only: npx tsx src/providers/provider-smoke.ts --run <anthropic|gemini>");
+  console.error("Local only: npx tsx src/commands/provider-smoke.ts --run <anthropic|gemini>");
   process.exitCode = 1;
 } else if (provider === "anthropic" || provider === "gemini") {
   setTracingDisabled(true);

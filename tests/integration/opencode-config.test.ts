@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const project = JSON.parse(readFileSync(new URL("../opencode.json", import.meta.url), "utf8"));
+const project = JSON.parse(readFileSync(new URL("../../opencode.json", import.meta.url), "utf8"));
 const compaction = project.compaction ?? {};
 
 describe("OpenCode routed-model context budget", () => {

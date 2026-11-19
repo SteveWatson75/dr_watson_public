@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type OpenAI from "openai";
-import { BudgetLedger } from "./budget.js";
-import { config } from "./config.js";
+import { BudgetLedger } from "../budget.js";
+import { config } from "../config.js";
 import {
   LOCAL_MODEL,
   conversationTier,
   prepareGithubActionMessages,
   routedCompletion,
   type CompletionTransport,
-} from "./local-api.js";
+} from "./server.js";
 
 const reply: OpenAI.ChatCompletion = {
   id: "chatcmpl-session-test",

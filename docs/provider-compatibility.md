@@ -59,8 +59,8 @@ not justification for changing the repository's approved architecture.
 Only after explicit authorization, with the intended key configured locally:
 
 ```sh
-npx tsx src/providers/provider-smoke.ts --run anthropic
-npx tsx src/providers/provider-smoke.ts --run gemini
+npx tsx src/commands/provider-smoke.ts --run anthropic
+npx tsx src/commands/provider-smoke.ts --run gemini
 ```
 
 Never run these as routine validation. The command refuses CI, disables tracing

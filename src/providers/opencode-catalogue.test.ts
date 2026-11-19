@@ -154,7 +154,7 @@ describe("check-models offline command", () => {
         mockPath,
         "--import",
         join(root, "node_modules/tsx/dist/loader.mjs"),
-        join(root, "src/check-models.ts"),
+        join(root, "src/commands/check-models.ts"),
         ...(json ? ["--json"] : []),
       ],
       {

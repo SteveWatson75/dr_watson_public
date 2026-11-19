@@ -1,24 +1,24 @@
 import { createServer, type Server } from "node:http";
-import { PROVIDERS, providerApiKey } from "./config.js";
-import { routedCompletion, type CompletionOptions } from "./local-api/completion.js";
+import { PROVIDERS, providerApiKey } from "../config.js";
+import { routedCompletion, type CompletionOptions } from "./completion.js";
 import {
   completionRequest,
   LOCAL_MODEL,
   publicCompletion,
   streamCompletion,
   type CompletionInput,
-} from "./local-api/protocol.js";
+} from "./protocol.js";
 
-// Preserve the entry point used by the server, reviewer and existing API callers.
-export { routedCompletion, type CompletionTransport } from "./local-api/completion.js";
+// Expose the local API helpers alongside the HTTP server.
+export { routedCompletion, type CompletionTransport } from "./completion.js";
 export {
   conversationTier,
   isOpenCodeCompactionRequest,
   isOpenCodeStateSummary,
   prepareGithubActionMessages,
   prepareOpenCodeMessages,
-} from "./local-api/messages.js";
-export { LOCAL_MODEL } from "./local-api/protocol.js";
+} from "./messages.js";
+export { LOCAL_MODEL } from "./protocol.js";
 
 // Upstream provider failures can echo request credentials back in their error
 // text. Redact every configured credential plus common credential shapes before
